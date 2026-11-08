@@ -18,6 +18,7 @@
   }
 
   function addSample(ctx) {
+    if (store.mode() === 'server' && !confirm('공유 저장소에 예시 데이터가 추가돼요. 다른 사람 화면에도 보여요.\n\n진행할까요?')) return false;
     var res = store.addSample(A.buildSample());
     if (ui.report(res, '예시 데이터를 추가했어요. “예시 ·”로 시작하는 캠페인을 삭제하면 함께 지워져요.')) ctx && ctx.setCampaign('all');
     return res.ok;
@@ -109,7 +110,7 @@
     });
     restoreBtn.addEventListener('click', function () {
       if (!backupPreview) return;
-      if (!confirm('지금 데이터가 모두 사라지고 백업 내용으로 바뀌어요.\n\n되돌릴 수 없어요. 진행할까요?')) return;
+      if (!confirm((store.mode() === 'server' ? '공유 저장소의 데이터가 모두 이 백업 내용으로 바뀌어요. (다른 사람 화면에서도 바뀌어요)' : '지금 데이터가 모두 사라지고 백업 내용으로 바뀌어요.') + '\n\n되돌릴 수 없어요. 진행할까요?')) return;
       if (ui.report(store.replaceAll(backupPreview.data), '백업에서 복원했어요.')) { ctx.setCampaign('all'); dlg.close(); }
     });
 
@@ -142,7 +143,7 @@
 
       el('section', { class: 'dsec' },
         el('h3', { text: '전체 백업 · 복원 (JSON)' }),
-        el('p', { class: 'muted small', text: '모든 데이터(캠페인·히스토리·소재·소재 변경 일정·체크리스트 업무)를 파일 하나로 저장해요. 데이터는 이 브라우저에만 있으니 가끔 백업해 두세요. 브라우저 데이터를 지우면 함께 사라져요.' }),
+        el('p', { class: 'muted small', text: '모든 데이터(캠페인·히스토리·소재·소재 변경 일정·체크리스트 업무)를 파일 하나로 저장해요. ' + (store.mode() === 'server' ? '데이터는 공유 저장소(서버)에 저장돼요. 이 파일은 만약을 위한 사본이에요.' : '데이터는 이 브라우저에만 있으니 가끔 백업해 두세요. 브라우저 데이터를 지우면 함께 사라져요.') + '' }),
         el('div', { class: 'drow' }, btn('백업 파일 받기', function () {
           ui.download('어도비_백업_' + ui.stamp() + '.json', store.exportJSON(), 'application/json;charset=utf-8', false);
           ui.toast('백업 파일을 저장했어요.');
@@ -156,10 +157,10 @@
 
       el('section', { class: 'dsec' },
         el('h3', { text: '전체 삭제' }),
-        el('p', { class: 'muted small', text: '이 브라우저에 저장된 모든 데이터를 지워요. 되돌릴 수 없으니 먼저 백업 파일을 받아 두세요.' }),
+        el('p', { class: 'muted small', text: '' + (store.mode() === 'server' ? '공유 저장소의 모든 데이터를 지워요 (다른 사람 화면에서도 사라져요).' : '이 브라우저에 저장된 모든 데이터를 지워요.') + ' 되돌릴 수 없으니 먼저 백업 파일을 받아 두세요.' }),
         el('div', { class: 'drow' }, el('button', { type: 'button', class: 'btn btn--sm btn--danger', text: '모든 데이터 지우기', on: { click: function () {
           var n = store.counts();
-          var answer = prompt('캠페인 ' + n.campaigns + '개와 그 안의 모든 데이터가 삭제돼요.\n되돌릴 수 없어요.\n\n정말 지우려면 “삭제”라고 입력하세요.');
+          var answer = prompt('캠페인 ' + n.campaigns + '개와 그 안의 모든 데이터가 삭제돼요.' + (store.mode() === 'server' ? ' (공유 저장소라서 다른 사람 화면에서도 모두 사라져요.)' : '') + '\n되돌릴 수 없어요.\n\n정말 지우려면 “삭제”라고 입력하세요.');
           if (answer !== '삭제') { if (answer !== null) ui.toast('입력이 달라서 취소했어요.'); return; }
           if (ui.report(store.clearAll(), '모든 데이터를 지웠어요.')) { ctx.setCampaign('all'); dlg.close(); }
         } } }))),

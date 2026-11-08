@@ -1,20 +1,19 @@
-// 데이터 저장소 — 지금은 이 브라우저(localStorage)에 저장.
-// 화면은 이 파일의 함수만 부르므로, 나중에 DB(Supabase 등)로 바꿀 때 이 파일만 교체하면 됩니다.
+// 데이터 저장소
+//  - 화면은 이 파일의 함수만 부릅니다 (추가/수정/삭제는 즉시 화면에 반영).
+//  - "로컬 모드": 이 브라우저(localStorage)에만 저장 (서버가 없는 곳 · 파일로 열기)
+//  - "서버 모드": 변경 내용을 자동으로 계산해(항목 단위) sync.js 가 서버로 보내고, 다른 사람의 변경을 받아 합침
 (function () {
   'use strict';
   var A = window.Ads = window.Ads || {};
-  var calc = A.calc;
+  var calc = A.calc, schema = A.schema;
 
-  var KEY = 'ads-data-v1';
-  var COLORS = [['indigo', '인디고'], ['teal', '청록'], ['amber', '호박'], ['rose', '장미'],
-                ['green', '초록'], ['violet', '보라'], ['orange', '주황'], ['slate', '회색']];
-  var TYPES = ['배너', '영상', '텍스트', '이메일', '기타'];
-  var STATUSES = [['ready', '준비'], ['live', '집행 중'], ['done', '종료']];
-  // 소재 변경 일정의 종류 [키, 이름, 달력에 붙는 기호]
-  var SCHEDULE_TYPES = [['swap', '소재 교체', '↻'], ['open', '신규 오픈', '＋'], ['end', '종료', '■'], ['check', '점검', '✓']];
-  // 체크리스트 업무 종류: daily 매일 / weekdays 평일(월~금) / once 한 번(마감일 있으면 기한 업무, 없으면 기한 없음)
-  var TASK_KINDS = ['daily', 'weekdays', 'once'];
-  var LIMITS = { campaigns: 100, histories: 5000, creatives: 1000, checklist: 30, schedules: 2000, tasks: 1000, doneDates: 1000 };
+  var LOCAL_KEY = 'ads-data-v1';          // 로컬 모드 저장 위치
+  var SERVER_KEY = 'ads-cache-v2';        // 서버 모드의 임시 보관(빠른 첫 화면용). 로컬 모드 데이터와 섞이지 않게 따로 둠
+  var KEY = LOCAL_KEY;
+  var mode = 'local';
+
+  var COLLECTIONS = schema.COLLECTIONS, COLORS = schema.COLORS, TYPES = schema.TYPES, STATUSES = schema.STATUSES;
+  var SCHEDULE_TYPES = schema.SCHEDULE_TYPES, TASK_KINDS = schema.TASK_KINDS, LIMITS = schema.LIMITS;
   var DEFAULT_CHECKLIST = ['규격·사이즈 확인', '문구 검수', '랜딩 링크 확인', 'UTM 파라미터 확인', '승인 완료'];
 
   var state = empty();
@@ -22,15 +21,15 @@
   var storageOk = true;
   var loadWarning = '';
   var saveErrorHandler = null;
+  var syncHook = null;                    // 서버 모드에서 sync.js 가 등록: { push(ops) }
+  var snap = {};                          // "컬렉션|id" → 마지막으로 서버와 맞춘 항목(JSON 글자). 달라진 것만 서버로 보내려고 비교용
 
   function empty() { return { version: 1, campaigns: [], histories: [], creatives: [], schedules: [], tasks: [] }; }
   function uid() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
   }
-  function str(v, max) { return typeof v === 'string' ? v.trim().slice(0, max) : ''; }
-  function arr(v) { return Array.isArray(v) ? v : []; }
-  function nn(v) { var n = typeof v === 'number' ? v : Number(v); return isFinite(n) && n >= 0 && n <= 1e13 ? n : null; }
+  var str = schema.str, arr = schema.arr;
   function colorOk(c) { return COLORS.some(function (p) { return p[0] === c; }); }
   function statusOk(s) { return STATUSES.some(function (p) { return p[0] === s; }); }
   function schedTypeOk(t) { return SCHEDULE_TYPES.some(function (p) { return p[0] === t; }); }
@@ -40,63 +39,48 @@
   function sanitize(raw) {
     var out = empty();
     if (!raw || typeof raw !== 'object') return out;
-    var ids = {};
-
+    var ids = {}, seen = {};
     arr(raw.campaigns).slice(0, LIMITS.campaigns).forEach(function (c) {
-      var name = str(c && c.name, 40);
-      var id = str(c && c.id, 64) || uid();
-      if (!name || ids[id]) return;
-      ids[id] = true;
-      out.campaigns.push({ id: id, name: name, color: colorOk(c.color) ? c.color : 'slate' });
+      var item = schema.cleanItem('campaigns', c, { newId: uid });
+      if (!item || ids[item.id]) return;
+      ids[item.id] = true;
+      out.campaigns.push(item);
     });
-
-    arr(raw.histories).slice(0, LIMITS.histories).forEach(function (h) {
-      if (!h || !ids[h.campaignId] || !calc.validDate(h.date)) return;
-      var content = str(h.content, 1000);
-      if (!content) return;
-      out.histories.push({ id: str(h.id, 64) || uid(), campaignId: h.campaignId, date: h.date, content: content,
-        createdAt: nn(h.createdAt) || Date.now() });
-    });
-
-    arr(raw.creatives).slice(0, LIMITS.creatives).forEach(function (c) {
-      if (!c || !ids[c.campaignId]) return;
-      var title = str(c.title, 80);
-      if (!title) return;
-      var list = [];
-      arr(c.checklist).slice(0, LIMITS.checklist).forEach(function (x) {
-        var text = str(x && x.text, 100);
-        if (text) list.push({ id: str(x.id, 64) || uid(), text: text, done: x.done === true });
+    ['histories', 'creatives', 'schedules', 'tasks'].forEach(function (name) {
+      seen[name] = {};
+      arr(raw[name]).slice(0, LIMITS[name]).forEach(function (x) {
+        var item = schema.cleanItem(name, x, { ids: ids, newId: uid });
+        if (!item || seen[name][item.id]) return;       // 같은 id 가 두 번 나오면 먼저 것만
+        seen[name][item.id] = true;
+        out[name].push(item);
       });
-      out.creatives.push({ id: str(c.id, 64) || uid(), campaignId: c.campaignId, title: title,
-        type: TYPES.indexOf(c.type) !== -1 ? c.type : '기타', status: statusOk(c.status) ? c.status : 'ready',
-        memo: str(c.memo, 300), checklist: list, createdAt: nn(c.createdAt) || Date.now() });
-    });
-    arr(raw.schedules).slice(0, LIMITS.schedules).forEach(function (x) {
-      if (!x || !ids[x.campaignId] || !calc.validDate(x.date)) return;
-      var title = str(x.title, 80);
-      if (!title) return;
-      out.schedules.push({ id: str(x.id, 64) || uid(), campaignId: x.campaignId, date: x.date,
-        type: schedTypeOk(x.type) ? x.type : 'swap', title: title, memo: str(x.memo, 300),
-        done: x.done === true, createdAt: nn(x.createdAt) || Date.now() });
-    });
-    arr(raw.tasks).slice(0, LIMITS.tasks).forEach(function (x) {
-      if (!x) return;
-      var title = str(x.title, 80);
-      var cid = typeof x.campaignId === 'string' ? x.campaignId : '';
-      if (!title || TASK_KINDS.indexOf(x.kind) === -1 || (cid && !ids[cid])) return;   // 없는 캠페인에 달린 업무는 버림("" = 공통 업무)
-      var kind = x.kind, start = calc.validDate(x.start) ? x.start : '', due = calc.validDate(x.due) ? x.due : '';
-      if (kind !== 'once' && !start) start = calc.today();
-      if (start && due && due < start) due = '';
-      if (kind === 'once' && !due) start = '';
-      var seen = {}, dates = [];
-      arr(x.doneDates).forEach(function (d) { if (calc.validDate(d) && !seen[d]) { seen[d] = true; dates.push(d); } });
-      dates.sort();
-      var isDone = x.done === true;
-      out.tasks.push({ id: str(x.id, 64) || uid(), campaignId: cid, title: title, memo: str(x.memo, 300), kind: kind,
-        start: start, due: due, doneDates: dates.slice(-LIMITS.doneDates), done: isDone,
-        doneAt: isDone && calc.validDate(x.doneAt) ? x.doneAt : '', createdAt: nn(x.createdAt) || Date.now() });
     });
     return out;
+  }
+
+  // ---------- 변경 추적 (서버 모드) ----------
+  function snapKey(c, id) { return c + '|' + id; }
+  function buildSnap() {
+    snap = {};
+    COLLECTIONS.forEach(function (c) { state[c].forEach(function (x) { snap[snapKey(c, x.id)] = JSON.stringify(x); }); });
+  }
+  // 마지막으로 서버와 맞춘 뒤 달라진 항목들 → [{c, id, item}] (item 이 null 이면 삭제)
+  function diffOps() {
+    var ops = [], seen = {};
+    COLLECTIONS.forEach(function (c) {
+      state[c].forEach(function (x) {
+        var k = snapKey(c, x.id), js = JSON.stringify(x);
+        seen[k] = true;
+        if (snap[k] !== js) { ops.push({ c: c, id: x.id, item: JSON.parse(js) }); snap[k] = js; }
+      });
+    });
+    Object.keys(snap).forEach(function (k) {
+      if (seen[k]) return;
+      var p = k.indexOf('|');
+      ops.push({ c: k.slice(0, p), id: k.slice(p + 1), item: null });
+      delete snap[k];
+    });
+    return ops;
   }
 
   // ---------- 저장 / 불러오기 ----------
@@ -104,7 +88,13 @@
     try { localStorage.setItem(KEY, JSON.stringify(state)); return true; }
     catch (e) { storageOk = false; if (saveErrorHandler) saveErrorHandler(e); return false; }
   }
-  function commit() { var saved = persist(); listeners.forEach(function (fn) { fn(); }); return saved; }
+  function notify() { listeners.forEach(function (fn) { fn(); }); }
+  function commit() {
+    var saved = persist();
+    if (syncHook) { var ops = diffOps(); if (ops.length) syncHook.push(ops); }
+    notify();
+    return saved;
+  }
   function load() {
     var raw = null;
     try { raw = localStorage.getItem(KEY); } catch (e) { storageOk = false; }
@@ -112,7 +102,7 @@
     try {
       var parsed = JSON.parse(raw);
       // 지금 버전에는 "성과·예산" 기능이 없음. 예전에 입력한 데이터가 있으면 지워지기 전에 따로 한 번 보관해 둠
-      if (arr(parsed.performance).length || arr(parsed.budgets).length) {
+      if (mode === 'local' && (arr(parsed.performance).length || arr(parsed.budgets).length)) {
         try {
           if (!localStorage.getItem(KEY + '-removed')) {
             localStorage.setItem(KEY + '-removed', JSON.stringify({ performance: arr(parsed.performance), budgets: arr(parsed.budgets), savedAt: new Date().toISOString() }));
@@ -125,6 +115,64 @@
       state = empty();
       loadWarning = '저장된 데이터를 읽지 못해 새로 시작했어요. (원본은 브라우저에 보관해 두었어요)';
     }
+  }
+
+  // 서버 모드로 전환: 서버 데이터가 도착하기 전에는 이전에 받아 둔 임시 보관본(있으면)만 보여 줌.
+  // (예전에 이 브라우저에만 저장해 둔 데이터는 서버로 올라가지 않고 쓰지도 않음)
+  function enterServerMode() {
+    mode = 'server';
+    KEY = SERVER_KEY;
+    load();
+    buildSnap();
+  }
+  function setSyncHook(hook) { syncHook = hook; }
+
+  // 서버에서 받은 항목을 합침. items: [{c, id, d(데이터), x(삭제됨)}]
+  //   o.full      true 면 "서버에 있는 전부"라는 뜻 → 서버에 없는 로컬 항목은 지움(남이 지운 것 반영)
+  //   o.isPending 내가 아직 서버에 못 보낸 변경이 있는 항목인지 (그런 항목은 건드리지 않음)
+  function applyRemote(items, o) {
+    o = o || {};
+    var pending = o.isPending || function () { return false; };
+    var changed = false, serverKeys = {};
+    function indexOfId(c, id) { return state[c].findIndex(function (x) { return x.id === id; }); }
+    function drop(c, id) {
+      var i = indexOfId(c, id);
+      if (i !== -1) { state[c].splice(i, 1); changed = true; }
+      delete snap[snapKey(c, id)];
+    }
+    function put(c, clean) {
+      var k = snapKey(c, clean.id), js = JSON.stringify(clean), i = indexOfId(c, clean.id);
+      if (i === -1) { state[c].push(clean); changed = true; }
+      else if (snap[k] !== js || JSON.stringify(state[c][i]) !== js) { state[c][i] = clean; changed = true; }
+      snap[k] = js;
+    }
+    function idsMap() { var m = {}; state.campaigns.forEach(function (c) { m[c.id] = true; }); return m; }
+    function handle(it, ids) {
+      var k = snapKey(it.c, it.id);
+      serverKeys[k] = true;
+      if (pending(k)) return;
+      if (it.x) { drop(it.c, it.id); return; }
+      var clean = schema.cleanItem(it.c, it.d, { ids: ids });
+      if (clean && clean.id === it.id) put(it.c, clean);
+    }
+
+    items.filter(function (it) { return it.c === 'campaigns'; }).forEach(function (it) { handle(it, null); });
+    var ids = idsMap();
+    items.filter(function (it) { return it.c !== 'campaigns' && COLLECTIONS.indexOf(it.c) !== -1; }).forEach(function (it) { handle(it, ids); });
+
+    if (o.full) {
+      COLLECTIONS.forEach(function (c) {
+        state[c].slice().forEach(function (x) { if (!serverKeys[snapKey(c, x.id)] && !pending(snapKey(c, x.id))) drop(c, x.id); });
+      });
+    }
+    // 캠페인이 사라졌는데 남아 있는 딸린 항목 정리 (공통 업무 campaignId "" 는 유지)
+    ids = idsMap();
+    ['histories', 'creatives', 'schedules', 'tasks'].forEach(function (c) {
+      state[c].slice().forEach(function (x) { if (x.campaignId && !ids[x.campaignId]) drop(c, x.id); });
+    });
+
+    if (changed) { persist(); notify(); }
+    return changed;
   }
 
   // ---------- 캠페인 ----------
@@ -158,7 +206,7 @@
   }
   function deleteCampaign(id) {   // 소속된 히스토리·소재·일정·업무도 함께 삭제 (공통 업무는 남음)
     if (!campaignById(id)) return err('없는 캠페인이에요.');
-    ['campaigns', 'histories', 'creatives', 'schedules', 'tasks'].forEach(function (k) {
+    COLLECTIONS.forEach(function (k) {
       state[k] = state[k].filter(function (x) { return (k === 'campaigns' ? x.id : x.campaignId) !== id; });
     });
     return { ok: true, saved: commit() };
@@ -204,7 +252,7 @@
     return { ok: true, added: added, skipped: skipped, created: created, saved: commit() };
   }
 
-  // ---------- 소재일정 · 체크리스트 ----------
+  // ---------- 소재 점검 (상태 · 체크리스트) ----------
   function creativeById(id) { return state.creatives.find(function (c) { return c.id === id; }); }
   function addCreative(i) {
     if (!i || !campaignById(i.campaignId)) return err('캠페인을 선택해 주세요.');
@@ -353,11 +401,19 @@
   function replaceAll(data) { state = sanitize(data); return { ok: true, saved: commit() }; }
   function clearAll() { state = empty(); return { ok: true, saved: commit() }; }
 
-  // 예시 데이터(sample.js)를 지금 데이터에 추가
+  // 예시 데이터(sample.js)를 지금 데이터에 추가 (공유 저장소에서 겹치지 않게 id 는 새로 만들어 붙임)
   function addSample(data) {
     var names = state.campaigns.map(function (c) { return c.name; });
     if (data.campaigns.some(function (c) { return names.indexOf(c.name) !== -1; })) return err('예시 데이터가 이미 들어 있어요.');
-    var clean = sanitize(data);
+    var map = {}, fresh = { campaigns: data.campaigns.map(function (c) { var id = uid(); map[c.id] = id; return Object.assign({}, c, { id: id }); }) };
+    ['histories', 'creatives', 'schedules', 'tasks'].forEach(function (k) {
+      fresh[k] = arr(data[k]).map(function (x) {
+        var y = Object.assign({}, x, { id: uid() });
+        if (y.campaignId) y.campaignId = map[y.campaignId] || y.campaignId;
+        return y;
+      });
+    });
+    var clean = sanitize(fresh);
     if (state.campaigns.length + clean.campaigns.length > LIMITS.campaigns) return err('캠페인 수가 너무 많아요.');
     Object.keys(clean).forEach(function (k) { if (Array.isArray(clean[k])) state[k] = state[k].concat(clean[k]); });
     return { ok: true, counts: counts(clean), saved: commit() };
@@ -366,8 +422,10 @@
   load();
 
   A.store = {
-    COLORS: COLORS, TYPES: TYPES, STATUSES: STATUSES, SCHEDULE_TYPES: SCHEDULE_TYPES, TASK_KINDS: TASK_KINDS, LIMITS: LIMITS, KEY: KEY,
+    COLORS: COLORS, TYPES: TYPES, STATUSES: STATUSES, SCHEDULE_TYPES: SCHEDULE_TYPES, TASK_KINDS: TASK_KINDS, LIMITS: LIMITS,
+    get KEY() { return KEY; },
     get: function () { return state; },
+    mode: function () { return mode; },
     subscribe: function (fn) { listeners.push(fn); },
     status: function () { return { storageOk: storageOk, loadWarning: loadWarning }; },
     onSaveError: function (fn) { saveErrorHandler = fn; },
@@ -380,6 +438,8 @@
     addTask: addTask, updateTask: updateTask, toggleTask: toggleTask, deleteTask: deleteTask,
     exportJSON: exportJSON, previewBackup: previewBackup, replaceAll: replaceAll, clearAll: clearAll,
     addSample: addSample, counts: function () { return counts(state); },
-    _sanitize: sanitize,
+    // 서버 동기화용 (sync.js 가 사용)
+    enterServerMode: enterServerMode, setSyncHook: setSyncHook, applyRemote: applyRemote,
+    _sanitize: sanitize, _diff: diffOps,
   };
 })();
