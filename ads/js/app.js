@@ -73,13 +73,49 @@
   });
 
   // ---------- 알림 띠 (저장이 안 될 때) ----------
-  function showBanner(msg) { var b = $('banner'); b.textContent = msg; b.hidden = !msg; }
-  var st0 = store.status();
-  if (!st0.storageOk) showBanner('이 브라우저에서는 데이터를 저장할 수 없어요 (사생활 보호 모드 등). 지금 입력한 내용은 창을 닫으면 사라지니, 데이터 메뉴에서 백업을 받아 두세요.');
-  else if (st0.loadWarning) showBanner(st0.loadWarning);
+  // 안내 띠: 서버 연결 문제(sync)와 브라우저 저장 문제(storage)를 따로 관리해서 함께 보여 줌
+  var banners = { storage: '', sync: '' };
+  function renderBanner() {
+    var b = $('banner'), msg = [banners.sync, banners.storage].filter(Boolean).join('  ');
+    b.textContent = msg; b.hidden = !msg;
+  }
+  function applyStorageBanner() {
+    var s = store.status();
+    // 서버 모드에서는 데이터가 서버에 있으므로 브라우저 저장 공간 문제는 중요하지 않음
+    banners.storage = store.mode() === 'server' ? '' :
+      !s.storageOk ? '이 브라우저에서는 데이터를 저장할 수 없어요 (사생활 보호 모드 등). 지금 입력한 내용은 창을 닫으면 사라지니, 데이터 메뉴에서 백업을 받아 두세요.' :
+      s.loadWarning || '';
+    renderBanner();
+  }
   store.onSaveError(function () {
-    showBanner('저장 공간이 가득 찼거나 쓸 수 없어요. 지금 내용은 화면에만 있으니 데이터 메뉴에서 백업(JSON)을 먼저 받아 두세요.');
+    if (store.mode() === 'server') return;
+    banners.storage = '저장 공간이 가득 찼거나 쓸 수 없어요. 지금 내용은 화면에만 있으니 데이터 메뉴에서 백업(JSON)을 먼저 받아 두세요.';
+    renderBanner();
   });
+
+  // ---------- 저장 위치 · 동기화 상태 표시 (우측 상단) ----------
+  var syncEl = $('syncState');
+  function renderSync(s) {
+    var text = '', cls = 'sync', title = '';
+    if (s.mode === 'local') {
+      text = '이 브라우저에만 저장'; cls += ' sync--local';
+      title = '이 주소에는 공유 저장소(서버)가 연결되어 있지 않아, 입력한 내용이 이 브라우저에만 저장돼요. 다른 컴퓨터에서는 보이지 않아요.';
+    } else if (s.mode === 'error') {
+      text = '공유 저장소 연결 안 됨'; cls += ' sync--error'; title = s.message;
+    } else if (s.state === 'synced') {
+      text = '공유 저장소 연결됨'; cls += ' sync--ok'; title = '입력한 내용이 서버에 저장되고, 다른 사람의 변경도 자동으로 반영돼요.';
+    } else if (s.state === 'offline') {
+      text = '연결 끊김' + (s.pending ? ' · ' + s.pending + '건 대기' : ''); cls += ' sync--bad'; title = s.message;
+    } else if (s.state === 'error') {
+      text = '일부 저장 실패'; cls += ' sync--error'; title = s.message;
+    } else {
+      text = '저장 중…'; cls += ' sync--busy'; title = '서버와 맞추는 중이에요.';
+    }
+    syncEl.textContent = text; syncEl.className = cls; syncEl.title = title; syncEl.hidden = false;
+    banners.sync = (s.mode === 'error' ? s.message + ' 지금 입력한 내용은 이 브라우저에만 저장돼요.' : s.mode === 'server' && s.state === 'error' ? s.message : '');
+    renderBanner();
+  }
+  A.sync.onStatus(renderSync);
 
   // ---------- 탭 ----------
   var tabButtons = Array.prototype.slice.call(document.querySelectorAll('.tab'));
@@ -197,5 +233,16 @@
     views[view.tab].render();
   }
   store.subscribe(render);
-  render();
+
+  // 서버 확인(+ 첫 데이터 받기)이 끝나면 첫 화면을 그림. 기다리는 동안에는 "불러오는 중" 화면
+  var bootEl = $('boot');
+  var ready = A.sync.start();
+  if (A.sync.isAsync()) bootEl.hidden = false;
+  ready.then(function () {
+    bootEl.hidden = true;
+    applyStorageBanner();
+    renderSync(A.sync.status());
+    render();
+    document.documentElement.dataset.ready = '1';       // 검사 도구가 "첫 화면이 그려졌는지" 알 수 있게
+  });
 })();
