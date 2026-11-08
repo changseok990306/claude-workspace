@@ -16,20 +16,27 @@ claude-workspace/
 ├── vercel.json        ▲ Vercel 배포 설정 (portfolio/ 폴더만 공개)
 ├── .env.example       📝 필요한 환경변수 이름 목록 (값 없음)
 ├── api/
-│   └── guestbook.js   💬 방명록 서버 함수 (Vercel)
+│   ├── guestbook.js   💬 방명록 서버 함수 (Vercel)
+│   ├── campaigns.js   📚 캠페인 서버 함수 (히스토리 사이트)
+│   ├── histories.js   📚 히스토리 서버 함수 (히스토리 사이트)
+│   └── _lib.js        🔧 위 두 함수의 공통 도우미 (밑줄 파일은 주소로 공개 안 됨)
 ├── supabase/
-│   └── messages.sql   🗄️ 방명록 DB 스키마 + 보안 정책
+│   ├── messages.sql   🗄️ 방명록 DB 스키마 + 보안 정책
+│   └── history.sql    🗄️ 캠페인 히스토리 DB 스키마 + 보안 정책
 ├── scripts/
-│   └── dev-server.js  🧪 로컬 테스트용 서버 (포트폴리오 + 방명록)
+│   └── dev-server.js  🧪 로컬 테스트용 서버 (포트폴리오 + 방명록 + 히스토리)
 ├── .env.local         🔒 로컬 테스트용 키 (내 컴퓨터에만 · GitHub에는 없음)
 ├── .env               🔒 API 키 보관 (로컬에만 존재 · GitHub에는 없음)
 ├── tasks/
 │   ├── todo.md        ✅ 오늘 할 일 (체크리스트)
 │   └── progress.md    📒 한 일 기록 (추가만 하고 지우지 않음)
 ├── docs/
-│   └── sample_sales.csv   📊 샘플 매출 데이터
+│   ├── sample_sales.csv         📊 샘플 매출 데이터
+│   └── adobe-history-PRD.md     📋 어도비 캠페인 히스토리 기획서(PRD)
 └── portfolio/
-    └── index.html     🌐 포트폴리오 웹페이지
+    ├── index.html     🌐 포트폴리오 웹페이지
+    └── history/       📚 어도비 캠페인 히스토리 사이트 (주소: /history)
+        ├── index.html · style.css · app.js · api.js
 ```
 
 > 🙈 `docs/resume.pdf`, `tasks/move-log.csv`는 개인·거래처 정보가 있어 로컬에만 두고 GitHub에는 올리지 않아요.
@@ -83,6 +90,22 @@ claude-workspace/
 
 > 방명록 글을 지우고 싶으면 Supabase **Table Editor** → `messages` → 해당 행을 삭제하세요. (방문자는 수정·삭제 불가)
 
+### 📚 어도비 캠페인 히스토리 (`/history`)
+
+캠페인별로 날짜와 함께 히스토리를 기록하고 검색하는 페이지예요. 기획 내용은 `docs/adobe-history-PRD.md`를 보세요.
+방명록과 **같은 Vercel 프로젝트, 같은 환경변수**를 쓰므로 새로 만들 것이 없어요.
+
+1. Supabase **SQL Editor → New query**에 `supabase/history.sql` 내용을 붙여넣고 **Run**
+   (`campaigns`, `histories` 두 테이블과 정책이 만들어져요. 여러 번 실행해도 안전)
+2. 코드를 `main`에 push → Vercel이 **자동으로 다시 배포** (환경변수 `SUPABASE_URL`, `SUPABASE_ANON_KEY`는 방명록 때 넣은 그대로)
+3. `내포트폴리오주소/history` 접속 → **+ 새 캠페인**으로 캠페인을 만들고 히스토리를 기록
+
+> ⚠️ **로그인이 없는 공개 페이지**예요. 주소를 아는 사람은 누구나 기록을 보고·추가하고·지울 수 있어요.
+> 고객명·금액 같은 민감한 업무 정보는 적지 마세요. 포트폴리오에는 링크를 걸지 않았고 검색엔진에도 안 잡히게(`noindex`) 해 뒀어요.
+> Supabase 무료 플랜은 자동 백업이 보장되지 않으니 중요한 기록은 따로 복사해 두세요.
+>
+> 화면에 **"기록을 불러오지 못했어요"** 가 뜨면 → 1번(SQL 실행)을 먼저 했는지, Vercel 환경변수 두 개가 있는지 확인하세요.
+
 ### 🧪 로컬에서 테스트하기
 
 Vercel에 올리기 전에 내 컴퓨터에서 먼저 확인할 수 있어요.
@@ -97,6 +120,7 @@ Vercel에 올리기 전에 내 컴퓨터에서 먼저 확인할 수 있어요.
    node --env-file=.env.local scripts/dev-server.js
    ```
 3. 브라우저에서 **http://localhost:3000** 열기 → 맨 아래 방명록에서 글 남겨 보기
+   (히스토리 사이트는 **http://localhost:3000/history** — 먼저 `history.sql`을 Supabase에서 실행해 두세요)
 4. 끄려면 터미널에서 `Ctrl + C`
 
 > 목록이 "불러오지 못했어요"로 나오면, 터미널에 찍히는 `[guestbook] Supabase 응답 …` 줄이 원인이에요.
