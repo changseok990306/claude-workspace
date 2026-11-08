@@ -1,0 +1,68 @@
+// 예시 데이터 — 화면을 처음 둘러볼 때 쓰는 가짜 데이터입니다. (오늘 날짜 기준으로 생성)
+(function () {
+  'use strict';
+  var A = window.Ads = window.Ads || {};
+  var calc = A.calc;
+
+  A.buildSample = function (now) {
+    var today = calc.today(now);
+    var d = function (n) { return calc.addDays(today, n); };
+
+    var campaigns = [
+      { id: 's1', name: '예시 · 브랜드 런칭', color: 'indigo' },
+      { id: 's2', name: '예시 · 여름 프로모션', color: 'orange' },
+      { id: 's3', name: '예시 · 리타게팅', color: 'teal' },
+    ];
+
+    var histories = [
+      { campaignId: 's1', date: d(-44), content: '런칭 캠페인 시작. 메인 배너 3종, 타겟 25-34.' },
+      { campaignId: 's1', date: d(-20), content: '예산 20% 증액 승인. 타겟 연령대를 25-39로 확대.' },
+      { campaignId: 's1', date: d(-3), content: '메인 배너 A/B 테스트 시작. 변형 B 클릭률이 초반에 더 높음.' },
+      { campaignId: 's2', date: d(-30), content: '여름 프로모션 오픈. 배너 5종, 이메일 1차 발송.' },
+      { campaignId: 's2', date: d(-12), content: '이메일 2차 발송. 제목에 할인율을 넣었더니 오픈율 상승.' },
+      { campaignId: 's3', date: d(-9), content: '픽셀 이벤트 누락 발견 → 개발팀에 수정 요청.' },
+      { campaignId: 's3', date: d(-1), content: '소재 3종 교체. 일 예산 상한 조정 필요.' },
+    ];
+
+    var check = function (list, doneCount) {
+      return list.map(function (t, i) { return { text: t, done: i < doneCount }; });
+    };
+    var base = ['규격·사이즈 확인', '문구 검수', '랜딩 링크 확인', 'UTM 파라미터 확인', '승인 완료'];
+    var creatives = [
+      { campaignId: 's1', title: '메인 배너 A (1200×628)', type: '배너', status: 'live', memo: '기본 안', checklist: check(base, 5) },
+      { campaignId: 's1', title: '메인 배너 B (1200×628)', type: '배너', status: 'live', memo: 'A/B 테스트용 변형', checklist: check(base, 5) },
+      { campaignId: 's1', title: '런칭 영상 15초', type: '영상', status: 'ready', memo: '자막 최종본 대기', checklist: check(base, 2) },
+      { campaignId: 's2', title: '할인 이메일 3차', type: '이메일', status: 'ready', memo: '', checklist: check(base, 0) },
+      { campaignId: 's3', title: '장바구니 리마인드 배너', type: '배너', status: 'live', memo: '', checklist: check(base, 4) },
+      { campaignId: 's2', title: '봄 시즌 배너 (종료)', type: '배너', status: 'done', memo: '', checklist: check(base, 5) },
+    ];
+
+    // 소재 변경 일정 (type: swap 교체 / open 신규 오픈 / end 종료 / check 점검)
+    var schedules = [
+      { campaignId: 's1', date: d(-15), type: 'open', title: '런칭 메인 배너 A 오픈', memo: '', done: true },
+      { campaignId: 's1', date: d(-6), type: 'swap', title: '메인 배너 A → B 교체', memo: 'A/B 테스트 결과 반영', done: true },
+      { campaignId: 's2', date: d(0), type: 'check', title: '프로모션 랜딩 링크 점검', memo: 'UTM 파라미터 포함 여부', done: false },
+      { campaignId: 's3', date: d(3), type: 'swap', title: '장바구니 리마인드 배너 3종 교체', memo: '', done: false },
+      { campaignId: 's1', date: d(2), type: 'swap', title: '런칭 영상 15초 업로드', memo: '자막 최종본 확인 후', done: false },
+      { campaignId: 's2', date: d(5), type: 'swap', title: '할인율 문구 변경 (20% → 30%)', memo: '', done: false },
+      { campaignId: 's2', date: d(5), type: 'end', title: '봄 시즌 배너 종료', memo: '', done: false },
+      { campaignId: 's1', date: d(9), type: 'open', title: '가을 시즌 배너 오픈', memo: '', done: false },
+      { campaignId: 's3', date: d(35), type: 'end', title: '리타게팅 소재 종료', memo: '다음 달 일정 예시', done: false },
+    ];
+
+    // 체크리스트 업무 (campaignId '' = 공통 업무 / kind: daily 매일 · weekdays 평일 · once 한 번)
+    var tasks = [
+      { campaignId: '', title: '광고 성과 리포트 확인', kind: 'daily', start: d(-40), due: '', memo: '전일 노출·클릭·비용 확인', doneDates: [d(-3), d(-2), d(-1)] },
+      { campaignId: '', title: '예산 소진 현황 점검', kind: 'weekdays', start: d(-40), due: '', memo: '일 예산 대비 소진율', doneDates: [d(-1)] },
+      { campaignId: 's1', title: '경고·승인 메일 확인', kind: 'daily', start: d(-20), due: '', memo: '', doneDates: [d(-1)] },
+      { campaignId: 's2', title: '프로모션 월간 리포트 작성', kind: 'once', start: d(-4), due: d(3), memo: '성과 요약 + 다음 달 제안', doneDates: [], done: false },
+      { campaignId: 's1', title: '캠페인 세팅 검수', kind: 'once', start: '', due: d(-1), memo: '지연 예시', doneDates: [], done: false },
+      { campaignId: '', title: '신규 담당자 계정 권한 요청', kind: 'once', start: '', due: d(0), memo: '', doneDates: [], done: false },
+      { campaignId: 's3', title: '가을 시즌 소재 기획안 검토', kind: 'once', start: '', due: d(12), memo: '', doneDates: [], done: false },
+      { campaignId: '', title: '광고 정책 변경 사항 정리', kind: 'once', start: '', due: '', memo: '기한 없는 업무 예시', doneDates: [], done: false },
+      { campaignId: '', title: '지난달 정산 확인', kind: 'once', start: '', due: d(-5), memo: '', doneDates: [], done: true, doneAt: d(-3) },
+    ];
+
+    return { campaigns: campaigns, histories: histories, creatives: creatives, schedules: schedules, tasks: tasks };
+  };
+})();
