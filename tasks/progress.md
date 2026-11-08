@@ -46,47 +46,9 @@
 6. 검증: 진짜 Supabase 연결 확인(키·URL 정상, 응답: 테이블 없음 `PGRST205`), 가짜 DB로 글쓰기→목록 표시, 입력 검사, 경로 탈출 차단 통과
 - 미확인: 진짜 DB에 글쓰기 (테이블이 아직 없음 → 사용자가 SQL Editor에서 `messages.sql` 실행 필요)
 
-## 2026-11-08 — 어도비 캠페인 히스토리 홈페이지 (브랜치 `adobe-history`)
+## 2026-11-08 — 오늘 한 어도비 히스토리 작업 전부 삭제 (사용자 요청)
 
-1. 계획(PRD·기술 방향) 작성 후 승인: 새 폴더 `adobe-history/`, 별도 Vercel 프로젝트(Root Directory=`adobe-history`), 저장소는 Supabase DB, 접근은 비밀번호 1개(`ADMIN_PASSWORD`)
-2. `adobe-history/supabase/adobe_history.sql` — `campaigns`·`histories` 테이블, 캠페인 삭제 시 히스토리 연쇄 삭제, RLS 켜고 공개 정책 없음(서버 함수만 `service_role` 키로 접근), 예시 캠페인 4개
-3. `adobe-history/api/` — `_lib.js`(비밀번호 확인·Supabase 호출), `campaigns.js`, `histories.js`. 입력 검증, 틀린 비밀번호 1분 5회 제한
-4. `adobe-history/scripts/dev-server.js` — 로컬 서버(`index.html`·`css/`·`js/`만 공개), `vercel.json`, `.env.example`(이름만)
-5. 화면: `index.html`, `css/style.css`, `js/api.js`, `js/app.js` — 캠페인 8색 톤, 히스토리 추가/삭제/날짜 입력, 날짜 최신순 타임라인, 실시간 검색(내용+날짜)·하이라이트, 다크/라이트 스위치(다크 #1A1A1A/#2D2D2D/#E0E0E0, 0.3초 전환), 반응형
-6. 검증: 가짜 Supabase로 API 37개 검사 통과 + 헤드리스 Chrome으로 화면 43개 검사 통과, 라이트/다크/375px 캡처 확인. 입력한 HTML 태그는 글자 그대로 표시됨
-7. `.gitignore` 점검: `.env.local`은 제외, `.env.example`은 커밋 가능
-- 미확인: 진짜 Supabase 연결(사용자가 SQL 실행·`.env.local` 작성 필요), 사파리·실제 휴대폰
-- 남은 일: 사용자 화면 확인 후 수정, README(배포 가이드), 진짜 DB 재검사(4b), Vercel 배포(사용자)
-- 해석한 점: 요구사항 마지막 문장이 끊겨 정렬은 "날짜 최신순, 오래될수록 아래"로 구현
-
-## 2026-11-08 — 히스토리 사이트 "공개 모드" 추가 (브랜치 `open-access`)
-
-1. 요청: 배포한 사이트에 비밀번호 창이 떠서, 비밀번호 없이 쓰고 싶다고 함 (잠금 유지를 권했으나 사용자가 "완전 공개"를 선택)
-2. `api/_lib.js` — `ADMIN_PASSWORD`가 **없으면 공개 모드**(누구나 읽기·쓰기), **있으면 잠금 모드**(기존 동작). 공개 모드에서는 같은 IP가 1분에 60번 넘게 쓰기(추가·삭제)하면 429로 막음
-3. `js/app.js` — 시작할 때 먼저 그냥 열어 보고, 401일 때만 비밀번호 창을 띄움. 공개 모드에서는 "잠금" 버튼 숨김
-4. `scripts/dev-server.js` — `ADMIN_PASSWORD`를 선택으로 변경, 시작 시 모드 표시. `.env.example`에 설명 추가
-5. 검증: 잠금 모드 API 37·화면 43개(기존) 재통과, 공개 모드 화면 8·API 14개 통과
-- 주의: Vercel에 `ADMIN_PASSWORD`가 이미 등록돼 있으면 계속 잠금 모드 → 공개로 바꾸려면 그 변수를 **삭제**하고 재배포해야 함
-- 주의: 공개 모드는 누구나 기록을 지울 수 있음(사용자가 감수하기로 함). Supabase 무료 플랜은 자동 백업이 보장되지 않으므로 중요한 기록은 따로 보관 권장
-- 미확인: 진짜 Supabase 연결, main 머지·push는 사용자 확인 대기
-
-## 2026-11-08 — 어도비 히스토리 사이트 폐기 후 처음부터 다시 (사용자 요청)
-
-1. 이유: 별도 Vercel 프로젝트 + 새 키(`SERVICE_ROLE`) 방식이 설정이 복잡해 배포에서 막힘. "포트폴리오 만든 것처럼" 하고 싶다는 요청
-2. `adobe-history/` 폴더 전체 삭제(11개 파일), 작업 브랜치 `adobe-history`·`open-access` 삭제 (로컬 + GitHub)
-3. 백업: 삭제 직전 상태를 태그 `backup-adobe-history-v1`(커밋 3a626ce)로 보존. 복구: `git checkout backup-adobe-history-v1 -- adobe-history`
-4. 포트폴리오(`portfolio/`, `api/guestbook.js`)는 건드리지 않음
-5. 새 방식: 기존 포트폴리오 Vercel 프로젝트 + 기존 환경변수(`SUPABASE_URL`, `SUPABASE_ANON_KEY`) 재사용, 주소는 `/history`
-
-## 2026-11-08 — 어도비 캠페인 히스토리 v2 (포트폴리오 방식, 브랜치 `history-page`)
-
-1. `docs/adobe-history-PRD.md` — 기획서(목표·기능 F1~F10·디자인·기술 방향·보안 한계·수용 기준·배포 순서)
-2. `supabase/history.sql` — `campaigns`·`histories` 테이블, 캠페인 삭제 시 히스토리 연쇄 삭제, 공개 키(anon)용 RLS 정책 + 컬럼 단위 권한 (messages.sql과 같은 방식)
-3. `api/_lib.js`, `api/campaigns.js`, `api/histories.js` — 기존 방명록과 같은 환경변수(`SUPABASE_URL`, `SUPABASE_ANON_KEY`) 사용. 입력 검증, 같은 IP 1분 60회 초과 쓰기 차단
-4. `portfolio/history/` — 화면(이전 v1의 검증된 화면에서 비밀번호 부분만 제거). 데이터 불러오기 실패 시 "다시 시도" 안내 화면 추가. 주소 `/history`, noindex, 포트폴리오에는 링크 없음
-5. `scripts/dev-server.js` — `/history`와 새 API 라우팅 추가 (방명록 동작은 그대로)
-6. README에 히스토리 설정·주의사항 추가
-7. 검증(가짜 Supabase + 헤드리스 Chrome): API 33, 화면 51, 공개접근·쓰기제한 14 → 98개 통과. 기존 포트폴리오(`/`)와 방명록 API 정상, `/history`·`/history/` 모두 열림, DB 장애 시 안내 화면→복구→"다시 시도" 동작 확인
-- 미확인: 진짜 Supabase 연결(`history.sql` 아직 미실행), 사파리·실제 휴대폰
-- 주의: 로그인 없는 공개 페이지(사용자 선택) — 누구나 기록을 지울 수 있음. 민감 정보 입력 금지, 중요한 기록은 별도 보관
-- 남은 일: main 머지 + push(사용자 확인 후), 사용자가 Supabase에서 `history.sql` 실행
+1. 사유: Vercel 프로젝트 삭제로 사이트가 내려가 혼선이 생겨, 오늘 작업을 모두 지우고 처음부터 다시 하기로 함
+2. 범위: 2026-11-08에 한 작업만. 11월 1일 마지막 커밋(`cf18ad2`, 방명록 머지) 상태로 되돌림 — 포트폴리오·방명록·`CLAUDE.md`·`SECURITY.md`는 그대로
+3. 백업: 태그 `backup-before-reset-20261108`(삭제 직전 전체), `backup-adobe-history-v1`(v1 폴더). 복구 예: `git checkout backup-before-reset-20261108 -- portfolio/history api supabase/history.sql docs/adobe-history-PRD.md`
+4. 이 메모를 빼고 나머지 오늘 기록(`todo.md`·`progress.md`의 11월 8일 항목)은 되돌리기와 함께 사라짐 — 백업 태그에 남아 있음

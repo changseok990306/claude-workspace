@@ -5,51 +5,6 @@
 
 ---
 
-## 2026-11-08 — 어도비 캠페인 히스토리 v2 (진행 중, 브랜치 `history-page`)
-
-방식: 포트폴리오와 똑같이. **기존 Vercel 프로젝트** + **기존 환경변수**(`SUPABASE_URL`, `SUPABASE_ANON_KEY`) → 주소 `/history`. 비밀번호 없음(공개). 새 키·새 프로젝트 없음.
-
-- [x] 1. 브랜치 `history-page` + 이 체크리스트
-- [x] 2. PRD 작성 → `docs/adobe-history-PRD.md`
-- [x] 3. `supabase/history.sql` — `campaigns`, `histories` 테이블 + 공개 규칙(RLS) (아직 Supabase에서 실행 안 함 → 문법 미검증)
-- [x] 4. `api/_lib.js`, `api/campaigns.js`, `api/histories.js` (anon 키, 입력 검증, 쓰기 횟수 제한)
-- [x] 5. 화면 `portfolio/history/` (index.html · style.css · app.js · api.js) + 불러오기 실패 안내 화면
-- [x] 6. `scripts/dev-server.js`가 `/history`와 새 API를 서비스하게 확장
-- [x] 7. 가짜 Supabase로 검사: API 33 + 화면 51 + 공개접근·횟수제한 14 = 98개 통과, 캡처 확인
-- [x] 8. README에 사용법 추가 → 커밋 (브랜치 `history-page`)
-- [ ] 9. (확인 후) main 머지 + push → Vercel 자동 배포
-- [ ] 10. (직접) Supabase SQL Editor에서 `history.sql` 실행 → `…/history` 접속
-
----
-
-## 2026-11-08 — 어도비 캠페인 히스토리 홈페이지 v1 (폐기 — 처음부터 다시, 위 v2 참고)
-
-> 백업 태그 `backup-adobe-history-v1`. 아래 체크리스트는 기록용으로만 남김.
-
-계획서: `~/.claude/plans/sorted-launching-mountain.md` (승인됨)
-방식: 새 폴더 `adobe-history/` → 별도 Vercel 프로젝트 (Root Directory = `adobe-history`). 브라우저 → Vercel 함수 → Supabase. 기존 포트폴리오는 건드리지 않음.
-
-- [x] 1. `tasks/todo.md`에 체크리스트 기록
-- [x] 2. `adobe-history/` 골격 + `vercel.json` + `.env.example` (브랜치 `adobe-history`)
-- [x] 3. `supabase/adobe_history.sql` 작성
-- [ ] 3b. (직접) Supabase SQL Editor에서 실행
-- [x] 4. API 3개(`campaigns`, `histories`, `_lib`) + 비밀번호 인증 + 로컬 dev 서버 — 가짜 Supabase로 37개 검사 통과
-- [ ] 4b. 진짜 Supabase로 같은 검사 한 번 더 (3b 완료 + `.env.local` 채운 뒤)
-- [x] 5. UI: 레이아웃 / 다크·라이트 토글 / 캠페인 색상 톤 (헤드리스 Chrome 43개 검사 통과 + 캡처 확인)
-- [x] 6. 히스토리 추가·삭제·날짜 입력·날짜 역순 정렬
-- [x] 7. 실시간 검색(내용+날짜) + 하이라이트
-- [ ] 7b. (직접) 화면 확인 → 수정할 점 전달 → 반영
-- [ ] 8. 반응형 점검(375/768 완료) + `README.md`(Vercel 배포 가이드) 작성
-- [ ] 9. `progress.md` 기록 + 브랜치 커밋 (push/머지는 승인 후)
-- [x] 10. `.gitignore` 점검 — `git check-ignore`로 확인: `.env.local` 무시됨, `.env.example`은 커밋 가능 (수정 불필요)
-- [ ] 11. (직접) Vercel 프로젝트 생성 → 환경변수 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` 등록 → 배포 (`ADMIN_PASSWORD`는 선택: 비우면 공개, 넣으면 잠금)
-- [x] 12. 비밀번호 없는 "공개 모드" 추가 (브랜치 `open-access`, 검사 통과) — 커밋 완료
-- [ ] 12b. `open-access`를 main에 머지 + push (사용자 확인 대기)
-- [ ] 12c. (직접) Vercel 환경변수 `ADMIN_PASSWORD` **삭제** 후 재배포
-- [ ] 13. `adobe-history/.vercelignore`로 `supabase/`, `scripts/` 등 비공개 처리 검토
-
----
-
 ## 2026-11-01 — 포트폴리오 방명록 붙이기 (진행 중 — 머지·배포만 남음)
 
 방식: 브라우저 → **Vercel 함수(`api/guestbook.js`)** → Supabase. 키는 Vercel 환경변수에만 보관 (코드에 하드코딩 X)
