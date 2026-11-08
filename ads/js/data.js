@@ -101,7 +101,7 @@
         backupPreview = pv;
         var c = pv.counts;
         jsonPrev.append(el('div', { class: 'ok', text: '읽을 수 있는 백업이에요.' }),
-          el('div', { text: '캠페인 ' + c.campaigns + ' · 히스토리 ' + c.histories + ' · 소재 ' + c.creatives + ' · 일정 ' + c.schedules }),
+          el('div', { text: '캠페인 ' + c.campaigns + ' · 히스토리 ' + c.histories + ' · 소재 ' + c.creatives + ' · 일정 ' + c.schedules + ' · 업무 ' + c.tasks }),
           pv.hasRemoved ? el('div', { class: 'muted', text: '이 백업에 들어 있던 성과·예산 데이터는 지금 버전에서 지원하지 않아 제외돼요.' }) : null,
           el('div', { class: 'muted', text: '지금 들어 있는 데이터는 모두 이 내용으로 바뀌어요.' }));
         restoreBtn.disabled = false;
@@ -142,7 +142,7 @@
 
       el('section', { class: 'dsec' },
         el('h3', { text: '전체 백업 · 복원 (JSON)' }),
-        el('p', { class: 'muted small', text: '모든 데이터(캠페인·히스토리·소재·소재 변경 일정)를 파일 하나로 저장해요. 데이터는 이 브라우저에만 있으니 가끔 백업해 두세요. 브라우저 데이터를 지우면 함께 사라져요.' }),
+        el('p', { class: 'muted small', text: '모든 데이터(캠페인·히스토리·소재·소재 변경 일정·체크리스트 업무)를 파일 하나로 저장해요. 데이터는 이 브라우저에만 있으니 가끔 백업해 두세요. 브라우저 데이터를 지우면 함께 사라져요.' }),
         el('div', { class: 'drow' }, btn('백업 파일 받기', function () {
           ui.download('어도비_백업_' + ui.stamp() + '.json', store.exportJSON(), 'application/json;charset=utf-8', false);
           ui.toast('백업 파일을 저장했어요.');

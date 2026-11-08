@@ -63,6 +63,45 @@
     return n === 0 ? '오늘' : n > 0 ? 'D-' + n : Math.abs(n) + '일 지남';
   }
 
+  // ---------- 체크리스트(업무) ----------
+  // 업무 모양: { kind: 'daily'|'weekdays'|'once', start, due, done, doneAt, doneDates:[] }
+  //   daily/weekdays: 시작일(start)부터 종료일(due, 비어 있으면 계속)까지 매일/평일마다 해야 함 — 날짜별로 doneDates 에 체크 기록
+  //   once: 마감일(due, 없으면 기한 없음), 시작일(start)은 선택 — done 한 번만 체크
+  function isWeekday(iso) { var d = new Date(iso + 'T00:00:00Z').getUTCDay(); return d >= 1 && d <= 5; }
+  function recurringApplies(t, day) {
+    if (t.kind !== 'daily' && t.kind !== 'weekdays') return false;
+    if (t.start && day < t.start) return false;
+    if (t.due && day > t.due) return false;
+    return t.kind === 'daily' || isWeekday(day);
+  }
+  // 그 날(day) 기준으로 이 업무가 어디에 속하는지:
+  //   'recurring' 오늘 해야 하는 반복 업무 / null 오늘은 해당 없음(반복 업무)
+  //   'overdue' 마감 지남 · 'today' 오늘 마감 또는 기간 중 · 'upcoming' 아직 시작 전/마감 멀음 · 'nodue' 기한 없음 · 'done' 완료
+  function taskBucket(t, day) {
+    if (t.kind === 'daily' || t.kind === 'weekdays') return recurringApplies(t, day) ? 'recurring' : null;
+    if (t.done) return 'done';
+    if (!t.due) return 'nodue';
+    if (t.due < day) return 'overdue';
+    if (t.due === day) return 'today';
+    return t.start && t.start <= day ? 'today' : 'upcoming';
+  }
+  // 그 날의 진행률: 반복 업무(해당하는 것) + 지연 + 오늘 + 그날 완료한 업무
+  function dayProgress(tasks, day) {
+    var total = 0, done = 0;
+    tasks.forEach(function (t) {
+      var b = taskBucket(t, day);
+      if (b === 'recurring') { total++; if ((t.doneDates || []).indexOf(day) !== -1) done++; }
+      else if (b === 'overdue' || b === 'today') total++;
+      else if (b === 'done' && t.doneAt === day) { total++; done++; }
+    });
+    return { done: done, total: total, pct: total ? (done / total) * 100 : 0 };
+  }
+  // 마감 표시: 0 → "오늘 마감", 3 → "D-3", -2 → "2일 지연"
+  function dueLabel(dayIso, dueIso) {
+    var n = daysBetween(dayIso, dueIso);
+    return n === 0 ? '오늘 마감' : n > 0 ? 'D-' + n : Math.abs(n) + '일 지연';
+  }
+
   // ---------- 검색 ----------
   function tokensOf(q) { return String(q || '').trim().toLowerCase().split(/\s+/).filter(Boolean); }
   // 날짜는 여러 표기로 찾을 수 있게: 2026-11-08 / 2026.11.08 / 2026/11/8 / 2026년 11월 8일 / 11월 8일 / 11/8
@@ -85,6 +124,7 @@
   return {
     validDate: validDate, normDate: normDate, addDays: addDays, daysBetween: daysBetween, today: today,
     monthStart: monthStart, monthEnd: monthEnd, addMonths: addMonths, monthGrid: monthGrid, ddayLabel: ddayLabel,
+    isWeekday: isWeekday, recurringApplies: recurringApplies, taskBucket: taskBucket, dayProgress: dayProgress, dueLabel: dueLabel,
     tokensOf: tokensOf, dateForms: dateForms, matches: matches, checklistProgress: checklistProgress,
   };
 });

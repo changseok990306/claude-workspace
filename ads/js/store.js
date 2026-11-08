@@ -12,7 +12,9 @@
   var STATUSES = [['ready', '준비'], ['live', '집행 중'], ['done', '종료']];
   // 소재 변경 일정의 종류 [키, 이름, 달력에 붙는 기호]
   var SCHEDULE_TYPES = [['swap', '소재 교체', '↻'], ['open', '신규 오픈', '＋'], ['end', '종료', '■'], ['check', '점검', '✓']];
-  var LIMITS = { campaigns: 100, histories: 5000, creatives: 1000, checklist: 30, schedules: 2000 };
+  // 체크리스트 업무 종류: daily 매일 / weekdays 평일(월~금) / once 한 번(마감일 있으면 기한 업무, 없으면 기한 없음)
+  var TASK_KINDS = ['daily', 'weekdays', 'once'];
+  var LIMITS = { campaigns: 100, histories: 5000, creatives: 1000, checklist: 30, schedules: 2000, tasks: 1000, doneDates: 1000 };
   var DEFAULT_CHECKLIST = ['규격·사이즈 확인', '문구 검수', '랜딩 링크 확인', 'UTM 파라미터 확인', '승인 완료'];
 
   var state = empty();
@@ -21,7 +23,7 @@
   var loadWarning = '';
   var saveErrorHandler = null;
 
-  function empty() { return { version: 1, campaigns: [], histories: [], creatives: [], schedules: [] }; }
+  function empty() { return { version: 1, campaigns: [], histories: [], creatives: [], schedules: [], tasks: [] }; }
   function uid() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
@@ -76,6 +78,23 @@
       out.schedules.push({ id: str(x.id, 64) || uid(), campaignId: x.campaignId, date: x.date,
         type: schedTypeOk(x.type) ? x.type : 'swap', title: title, memo: str(x.memo, 300),
         done: x.done === true, createdAt: nn(x.createdAt) || Date.now() });
+    });
+    arr(raw.tasks).slice(0, LIMITS.tasks).forEach(function (x) {
+      if (!x) return;
+      var title = str(x.title, 80);
+      var cid = typeof x.campaignId === 'string' ? x.campaignId : '';
+      if (!title || TASK_KINDS.indexOf(x.kind) === -1 || (cid && !ids[cid])) return;   // 없는 캠페인에 달린 업무는 버림("" = 공통 업무)
+      var kind = x.kind, start = calc.validDate(x.start) ? x.start : '', due = calc.validDate(x.due) ? x.due : '';
+      if (kind !== 'once' && !start) start = calc.today();
+      if (start && due && due < start) due = '';
+      if (kind === 'once' && !due) start = '';
+      var seen = {}, dates = [];
+      arr(x.doneDates).forEach(function (d) { if (calc.validDate(d) && !seen[d]) { seen[d] = true; dates.push(d); } });
+      dates.sort();
+      var isDone = x.done === true;
+      out.tasks.push({ id: str(x.id, 64) || uid(), campaignId: cid, title: title, memo: str(x.memo, 300), kind: kind,
+        start: start, due: due, doneDates: dates.slice(-LIMITS.doneDates), done: isDone,
+        doneAt: isDone && calc.validDate(x.doneAt) ? x.doneAt : '', createdAt: nn(x.createdAt) || Date.now() });
     });
     return out;
   }
@@ -137,9 +156,9 @@
     c.name = v.name; c.color = v.color;
     return { ok: true, item: c, saved: commit() };
   }
-  function deleteCampaign(id) {   // 소속된 히스토리·소재·일정도 함께 삭제
+  function deleteCampaign(id) {   // 소속된 히스토리·소재·일정·업무도 함께 삭제 (공통 업무는 남음)
     if (!campaignById(id)) return err('없는 캠페인이에요.');
-    ['campaigns', 'histories', 'creatives', 'schedules'].forEach(function (k) {
+    ['campaigns', 'histories', 'creatives', 'schedules', 'tasks'].forEach(function (k) {
       state[k] = state[k].filter(function (x) { return (k === 'campaigns' ? x.id : x.campaignId) !== id; });
     });
     return { ok: true, saved: commit() };
@@ -261,10 +280,62 @@
     return n === state.schedules.length ? err('없는 일정이에요.') : { ok: true, saved: commit() };
   }
 
+  // ---------- 체크리스트 (업무) ----------
+  function taskById(id) { return state.tasks.find(function (x) { return x.id === id; }); }
+  // 입력값 검사 → 저장할 값. 반복 업무는 시작일 필수(종료일 선택), 기한 업무는 마감일(+선택 시작일), 기한 없음은 날짜 없음
+  function cleanTask(i) {
+    var title = str(i && i.title, 81);
+    if (!title || title.length > 80) return err('업무 이름은 1~80자로 적어 주세요.');
+    if (TASK_KINDS.indexOf(i.kind) === -1) return err('업무 종류가 올바르지 않아요.');
+    var cid = i.campaignId ? String(i.campaignId) : '';
+    if (cid && !campaignById(cid)) return err('없는 캠페인이에요.');
+    var start = i.start ? String(i.start) : '', due = i.due ? String(i.due) : '';
+    if (start && !calc.validDate(start)) return err('시작일을 올바르게 입력해 주세요.');
+    if (due && !calc.validDate(due)) return err((i.kind === 'once' ? '마감일' : '종료일') + '을 올바르게 입력해 주세요.');
+    if (i.kind !== 'once' && !start) return err('시작일을 입력해 주세요.');
+    if (i.kind === 'once' && !due) start = '';                 // 기한 없음 업무에는 날짜가 없음 (마감일 없이 시작일만 있으면 시작일은 버림)
+    if (start && due && due < start) return err((i.kind === 'once' ? '마감일' : '종료일') + '이 시작일보다 앞이에요.');
+    return { ok: true, value: { campaignId: cid, title: title, memo: str(i.memo, 300), kind: i.kind, start: start, due: due } };
+  }
+  function addTask(i) {
+    var v = cleanTask(i);
+    if (!v.ok) return v;
+    if (state.tasks.length >= LIMITS.tasks) return err('업무는 ' + LIMITS.tasks + '개까지 저장할 수 있어요.');
+    var x = Object.assign({ id: uid(), doneDates: [], done: false, doneAt: '', createdAt: Date.now() }, v.value);
+    state.tasks.push(x);
+    return { ok: true, item: x, saved: commit() };
+  }
+  function updateTask(id, i) {      // 체크 기록(doneDates/done)은 그대로 두고 내용만 바꿈
+    var x = taskById(id);
+    if (!x) return err('없는 업무예요.');
+    var v = cleanTask(i);
+    if (!v.ok) return v;
+    Object.assign(x, v.value);
+    return { ok: true, item: x, saved: commit() };
+  }
+  // 반복 업무: day(날짜)의 체크를 켜고 끔 / 한 번짜리 업무: 완료 <-> 미완료 (완료한 날짜 = day)
+  function toggleTask(id, day) {
+    var x = taskById(id);
+    if (!x) return err('없는 업무예요.');
+    if (!calc.validDate(day)) return err('날짜가 올바르지 않아요.');
+    if (x.kind === 'once') { x.done = !x.done; x.doneAt = x.done ? day : ''; }
+    else {
+      var at = x.doneDates.indexOf(day);
+      if (at === -1) { x.doneDates.push(day); x.doneDates.sort(); if (x.doneDates.length > LIMITS.doneDates) x.doneDates = x.doneDates.slice(-LIMITS.doneDates); }
+      else x.doneDates.splice(at, 1);
+    }
+    return { ok: true, item: x, saved: commit() };
+  }
+  function deleteTask(id) {
+    var n = state.tasks.length;
+    state.tasks = state.tasks.filter(function (x) { return x.id !== id; });
+    return n === state.tasks.length ? err('없는 업무예요.') : { ok: true, saved: commit() };
+  }
+
   // ---------- 백업 · 복원 · 초기화 ----------
   function counts(d) {
     d = d || state;
-    return { campaigns: d.campaigns.length, histories: d.histories.length, creatives: d.creatives.length, schedules: d.schedules.length };
+    return { campaigns: d.campaigns.length, histories: d.histories.length, creatives: d.creatives.length, schedules: d.schedules.length, tasks: d.tasks.length };
   }
   function exportJSON() {
     return JSON.stringify({ app: 'ads-operations', exportedAt: new Date().toISOString(), data: state }, null, 2);
@@ -295,17 +366,18 @@
   load();
 
   A.store = {
-    COLORS: COLORS, TYPES: TYPES, STATUSES: STATUSES, SCHEDULE_TYPES: SCHEDULE_TYPES, LIMITS: LIMITS, KEY: KEY,
+    COLORS: COLORS, TYPES: TYPES, STATUSES: STATUSES, SCHEDULE_TYPES: SCHEDULE_TYPES, TASK_KINDS: TASK_KINDS, LIMITS: LIMITS, KEY: KEY,
     get: function () { return state; },
     subscribe: function (fn) { listeners.push(fn); },
     status: function () { return { storageOk: storageOk, loadWarning: loadWarning }; },
     onSaveError: function (fn) { saveErrorHandler = fn; },
-    campaignById: campaignById, creativeById: creativeById, scheduleById: scheduleById, nextColor: nextColor,
+    campaignById: campaignById, creativeById: creativeById, scheduleById: scheduleById, taskById: taskById, nextColor: nextColor,
     addCampaign: addCampaign, updateCampaign: updateCampaign, deleteCampaign: deleteCampaign,
     addHistory: addHistory, addHistories: addHistories, deleteHistory: deleteHistory,
     addCreative: addCreative, updateCreative: updateCreative, deleteCreative: deleteCreative,
     addCheck: addCheck, toggleCheck: toggleCheck, removeCheck: removeCheck,
     addSchedule: addSchedule, toggleSchedule: toggleSchedule, deleteSchedule: deleteSchedule,
+    addTask: addTask, updateTask: updateTask, toggleTask: toggleTask, deleteTask: deleteTask,
     exportJSON: exportJSON, previewBackup: previewBackup, replaceAll: replaceAll, clearAll: clearAll,
     addSample: addSample, counts: function () { return counts(state); },
     _sanitize: sanitize,

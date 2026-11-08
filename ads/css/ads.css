@@ -150,6 +150,30 @@
 .sform__title { margin: 0; font-size: .95rem; }
 .sform__row2 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 
+/* ---------- 체크리스트 ---------- */
+.chip--run { background: color-mix(in srgb, var(--ok) 20%, var(--card)); color: var(--ok); }
+.chip--warn { background: color-mix(in srgb, var(--warn) 22%, var(--card)); color: var(--warn); }
+.chip--over { background: color-mix(in srgb, var(--danger) 20%, var(--card)); color: var(--danger); }
+.progress--ok .progress__bar { background: var(--ok); }
+.tday { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.tday__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.tday__title { margin: 0; font-size: 1.3rem; letter-spacing: -.01em; }
+.tday__date { font: inherit; font-size: .85rem; color: var(--text); background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; }
+.tprog { display: flex; align-items: center; gap: 12px; }
+.tprog .progress { flex: 1; height: 12px; }
+.tprog .progress__bar { background: var(--text); }
+.tprog__text { font-weight: 700; font-size: .9rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tform { display: flex; flex-direction: column; gap: 14px; }
+.tform__wide { grid-column: span 2; }
+.tsections { display: flex; flex-direction: column; gap: 20px; }
+.tsec { padding: 16px; }
+.tsec__title { margin: 0 0 12px; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+.tsec__count { display: inline-block; min-width: 22px; padding: 0 7px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 20%, var(--card)); color: var(--text); font-size: .78rem; font-weight: 700; text-align: center; line-height: 1.6; }
+.tsec--overdue { border-color: var(--danger); }
+.tsec--overdue .tsec__title { color: var(--danger); }
+.tsec--done > summary { cursor: pointer; font-weight: 700; }
+.sitem__actions { display: flex; gap: 2px; align-items: flex-start; }
+
 /* ---------- 반응형 ---------- */
 @media (max-width: 1023px) {
   .sidebar { top: auto; }
@@ -164,4 +188,9 @@
   .cal__events { display: none; }          /* 좁은 화면에서는 칩 대신 색 점으로 표시 */
   .cal__dots { display: flex; }
   .cal__more { display: none; }
+}
+@media (max-width: 560px) {
+  .tform__wide { grid-column: auto; }
+  .tprog { flex-direction: column; align-items: stretch; gap: 6px; }
+  .sitem__actions { flex-direction: column; }
 }

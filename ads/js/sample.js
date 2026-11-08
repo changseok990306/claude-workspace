@@ -50,6 +50,19 @@
       { campaignId: 's3', date: d(35), type: 'end', title: '리타게팅 소재 종료', memo: '다음 달 일정 예시', done: false },
     ];
 
-    return { campaigns: campaigns, histories: histories, creatives: creatives, schedules: schedules };
+    // 체크리스트 업무 (campaignId '' = 공통 업무 / kind: daily 매일 · weekdays 평일 · once 한 번)
+    var tasks = [
+      { campaignId: '', title: '광고 성과 리포트 확인', kind: 'daily', start: d(-40), due: '', memo: '전일 노출·클릭·비용 확인', doneDates: [d(-3), d(-2), d(-1)] },
+      { campaignId: '', title: '예산 소진 현황 점검', kind: 'weekdays', start: d(-40), due: '', memo: '일 예산 대비 소진율', doneDates: [d(-1)] },
+      { campaignId: 's1', title: '경고·승인 메일 확인', kind: 'daily', start: d(-20), due: '', memo: '', doneDates: [d(-1)] },
+      { campaignId: 's2', title: '프로모션 월간 리포트 작성', kind: 'once', start: d(-4), due: d(3), memo: '성과 요약 + 다음 달 제안', doneDates: [], done: false },
+      { campaignId: 's1', title: '캠페인 세팅 검수', kind: 'once', start: '', due: d(-1), memo: '지연 예시', doneDates: [], done: false },
+      { campaignId: '', title: '신규 담당자 계정 권한 요청', kind: 'once', start: '', due: d(0), memo: '', doneDates: [], done: false },
+      { campaignId: 's3', title: '가을 시즌 소재 기획안 검토', kind: 'once', start: '', due: d(12), memo: '', doneDates: [], done: false },
+      { campaignId: '', title: '광고 정책 변경 사항 정리', kind: 'once', start: '', due: '', memo: '기한 없는 업무 예시', doneDates: [], done: false },
+      { campaignId: '', title: '지난달 정산 확인', kind: 'once', start: '', due: d(-5), memo: '', doneDates: [], done: true, doneAt: d(-3) },
+    ];
+
+    return { campaigns: campaigns, histories: histories, creatives: creatives, schedules: schedules, tasks: tasks };
   };
 })();

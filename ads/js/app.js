@@ -7,8 +7,9 @@
   var TABS = {
     records: { label: '히스토리', sub: '캠페인별 변경·이슈·결정 기록', count: 'histories' },
     creatives: { label: '소재일정', sub: '소재 변경 일정 캘린더와 소재 점검', count: 'schedules' },
+    tasks: { label: '체크리스트', sub: '매일 업무·기한 업무 체크 (공통 업무는 항상 표시)', count: 'tasks' },
   };
-  var TAB_ORDER = ['records', 'creatives'];
+  var TAB_ORDER = ['records', 'creatives', 'tasks'];
   var UI_KEY = 'ads-ui-v1';
 
   var view = { tab: 'records', campaign: 'all' };
@@ -171,7 +172,7 @@
     if (!c) return;
     var s = store.get(), n = function (k) { return s[k].filter(function (x) { return x.campaignId === c.id; }).length; };
     if (!confirm('“' + c.name + '” 캠페인과 그 안의 히스토리 ' + n('histories') + '개, 소재 ' + n('creatives') +
-      '개, 일정 ' + n('schedules') + '개가 모두 삭제돼요.\n\n이 작업은 되돌릴 수 없어요. (데이터 메뉴에서 백업을 받아 두면 안전해요)\n진행할까요?')) return;
+      '개, 일정 ' + n('schedules') + '개, 업무 ' + n('tasks') + '개가 모두 삭제돼요. (어느 캠페인에도 속하지 않은 공통 업무는 남아요.)\n\n이 작업은 되돌릴 수 없어요. (데이터 메뉴에서 백업을 받아 두면 안전해요)\n진행할까요?')) return;
     var res = store.deleteCampaign(c.id);
     if (ui.report(res, '삭제했어요.')) ctx.setCampaign('all');
   });
