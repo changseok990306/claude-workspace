@@ -5,7 +5,9 @@
 
 ---
 
-## 2026-11-08 — 어도비 캠페인 히스토리 홈페이지 (진행 중)
+## 2026-11-08 — 어도비 캠페인 히스토리 홈페이지 v1 (폐기 — 처음부터 다시, 아래 v2 참고)
+
+> 백업 태그 `backup-adobe-history-v1`. 아래 체크리스트는 기록용으로만 남김.
 
 계획서: `~/.claude/plans/sorted-launching-mountain.md` (승인됨)
 방식: 새 폴더 `adobe-history/` → 별도 Vercel 프로젝트 (Root Directory = `adobe-history`). 브라우저 → Vercel 함수 → Supabase. 기존 포트폴리오는 건드리지 않음.

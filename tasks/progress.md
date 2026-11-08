@@ -69,3 +69,11 @@
 - 주의: Vercel에 `ADMIN_PASSWORD`가 이미 등록돼 있으면 계속 잠금 모드 → 공개로 바꾸려면 그 변수를 **삭제**하고 재배포해야 함
 - 주의: 공개 모드는 누구나 기록을 지울 수 있음(사용자가 감수하기로 함). Supabase 무료 플랜은 자동 백업이 보장되지 않으므로 중요한 기록은 따로 보관 권장
 - 미확인: 진짜 Supabase 연결, main 머지·push는 사용자 확인 대기
+
+## 2026-11-08 — 어도비 히스토리 사이트 폐기 후 처음부터 다시 (사용자 요청)
+
+1. 이유: 별도 Vercel 프로젝트 + 새 키(`SERVICE_ROLE`) 방식이 설정이 복잡해 배포에서 막힘. "포트폴리오 만든 것처럼" 하고 싶다는 요청
+2. `adobe-history/` 폴더 전체 삭제(11개 파일), 작업 브랜치 `adobe-history`·`open-access` 삭제 (로컬 + GitHub)
+3. 백업: 삭제 직전 상태를 태그 `backup-adobe-history-v1`(커밋 3a626ce)로 보존. 복구: `git checkout backup-adobe-history-v1 -- adobe-history`
+4. 포트폴리오(`portfolio/`, `api/guestbook.js`)는 건드리지 않음
+5. 새 방식: 기존 포트폴리오 Vercel 프로젝트 + 기존 환경변수(`SUPABASE_URL`, `SUPABASE_ANON_KEY`) 재사용, 주소는 `/history`
