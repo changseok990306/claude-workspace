@@ -45,3 +45,16 @@
 5. README에 로컬 테스트 방법 추가
 6. 검증: 진짜 Supabase 연결 확인(키·URL 정상, 응답: 테이블 없음 `PGRST205`), 가짜 DB로 글쓰기→목록 표시, 입력 검사, 경로 탈출 차단 통과
 - 미확인: 진짜 DB에 글쓰기 (테이블이 아직 없음 → 사용자가 SQL Editor에서 `messages.sql` 실행 필요)
+
+## 2026-11-08 — 어도비 캠페인 히스토리 홈페이지 (브랜치 `adobe-history`)
+
+1. 계획(PRD·기술 방향) 작성 후 승인: 새 폴더 `adobe-history/`, 별도 Vercel 프로젝트(Root Directory=`adobe-history`), 저장소는 Supabase DB, 접근은 비밀번호 1개(`ADMIN_PASSWORD`)
+2. `adobe-history/supabase/adobe_history.sql` — `campaigns`·`histories` 테이블, 캠페인 삭제 시 히스토리 연쇄 삭제, RLS 켜고 공개 정책 없음(서버 함수만 `service_role` 키로 접근), 예시 캠페인 4개
+3. `adobe-history/api/` — `_lib.js`(비밀번호 확인·Supabase 호출), `campaigns.js`, `histories.js`. 입력 검증, 틀린 비밀번호 1분 5회 제한
+4. `adobe-history/scripts/dev-server.js` — 로컬 서버(`index.html`·`css/`·`js/`만 공개), `vercel.json`, `.env.example`(이름만)
+5. 화면: `index.html`, `css/style.css`, `js/api.js`, `js/app.js` — 캠페인 8색 톤, 히스토리 추가/삭제/날짜 입력, 날짜 최신순 타임라인, 실시간 검색(내용+날짜)·하이라이트, 다크/라이트 스위치(다크 #1A1A1A/#2D2D2D/#E0E0E0, 0.3초 전환), 반응형
+6. 검증: 가짜 Supabase로 API 37개 검사 통과 + 헤드리스 Chrome으로 화면 43개 검사 통과, 라이트/다크/375px 캡처 확인. 입력한 HTML 태그는 글자 그대로 표시됨
+7. `.gitignore` 점검: `.env.local`은 제외, `.env.example`은 커밋 가능
+- 미확인: 진짜 Supabase 연결(사용자가 SQL 실행·`.env.local` 작성 필요), 사파리·실제 휴대폰
+- 남은 일: 사용자 화면 확인 후 수정, README(배포 가이드), 진짜 DB 재검사(4b), Vercel 배포(사용자)
+- 해석한 점: 요구사항 마지막 문장이 끊겨 정렬은 "날짜 최신순, 오래될수록 아래"로 구현
