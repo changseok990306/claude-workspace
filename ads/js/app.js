@@ -5,12 +5,10 @@
 
   function $(id) { return document.getElementById(id); }
   var TABS = {
-    records: { label: '기록장', sub: '캠페인별 변경·이슈·결정 기록', count: 'histories' },
-    performance: { label: '성과', sub: '노출·클릭·비용·전환과 효율 지표', count: 'performance' },
-    budget: { label: '예산·일정', sub: '예산 대비 집행액과 집행 일정', count: 'budgets' },
-    creatives: { label: '소재', sub: '광고 소재와 점검 체크리스트', count: 'creatives' },
+    records: { label: '히스토리', sub: '캠페인별 변경·이슈·결정 기록', count: 'histories' },
+    creatives: { label: '소재일정', sub: '광고 소재와 점검 체크리스트', count: 'creatives' },
   };
-  var TAB_ORDER = ['records', 'performance', 'budget', 'creatives'];
+  var TAB_ORDER = ['records', 'creatives'];
   var UI_KEY = 'ads-ui-v1';
 
   var view = { tab: 'records', campaign: 'all' };
@@ -47,7 +45,7 @@
     emptyState: function () {
       return el('div', { class: 'empty empty--welcome' },
         el('h2', { text: '먼저 캠페인을 만들어 주세요' }),
-        el('p', { class: 'muted', text: '캠페인이 모든 기록·성과·예산·소재의 기준이에요. 처음이라면 예시 데이터로 먼저 둘러볼 수도 있어요.' }),
+        el('p', { class: 'muted', text: '캠페인이 모든 히스토리·소재일정의 기준이에요. 처음이라면 예시 데이터로 먼저 둘러볼 수도 있어요.' }),
         el('div', { class: 'empty__actions' },
           el('button', { type: 'button', class: 'btn btn--primary', text: '+ 새 캠페인', on: { click: function () { openCampaignDialog(null); } } }),
           el('button', { type: 'button', class: 'btn', text: '예시 데이터로 둘러보기', on: { click: function () { A.data && A.data.addSample(ctx); } } }),
@@ -101,7 +99,8 @@
   });
   window.addEventListener('hashchange', function () {
     var h = location.hash.replace('#', '');
-    if (TABS[h] && h !== view.tab) { view.tab = h; render(); }
+    if (TABS[h]) { if (h !== view.tab) { view.tab = h; render(); } }
+    else go('records');       // 알 수 없는 주소(예전 #performance 등)·빈 주소(로고 클릭)는 첫 탭으로
   });
 
   // ---------- 사이드바 ----------
@@ -171,8 +170,8 @@
     var c = store.campaignById(current());
     if (!c) return;
     var s = store.get(), n = function (k) { return s[k].filter(function (x) { return x.campaignId === c.id; }).length; };
-    if (!confirm('“' + c.name + '” 캠페인과 그 안의 기록 ' + n('histories') + '개, 성과 ' + n('performance') + '건, 예산 ' + n('budgets') +
-      '개, 소재 ' + n('creatives') + '개가 모두 삭제돼요.\n\n이 작업은 되돌릴 수 없어요. (데이터 메뉴에서 백업을 받아 두면 안전해요)\n진행할까요?')) return;
+    if (!confirm('“' + c.name + '” 캠페인과 그 안의 히스토리 ' + n('histories') + '개, 소재 ' + n('creatives') +
+      '개가 모두 삭제돼요.\n\n이 작업은 되돌릴 수 없어요. (데이터 메뉴에서 백업을 받아 두면 안전해요)\n진행할까요?')) return;
     var res = store.deleteCampaign(c.id);
     if (ui.report(res, '삭제했어요.')) ctx.setCampaign('all');
   });

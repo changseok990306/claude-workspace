@@ -1,52 +1,17 @@
 // 예시 데이터 — 화면을 처음 둘러볼 때 쓰는 가짜 데이터입니다. (오늘 날짜 기준으로 생성)
-// 같은 날에는 항상 같은 값이 나오도록 난수 대신 고정 시드를 씁니다.
 (function () {
   'use strict';
   var A = window.Ads = window.Ads || {};
   var calc = A.calc;
 
-  function rng(seed) {     // mulberry32: 시드가 같으면 같은 순서의 난수
-    return function () {
-      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
-      var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-
   A.buildSample = function (now) {
     var today = calc.today(now);
     var d = function (n) { return calc.addDays(today, n); };
-    var rand = rng(20261108);
 
-    var camps = [
-      { id: 's1', name: '예시 · 브랜드 런칭', color: 'indigo', impr: 14000, ctr: 0.018, cpc: 380, cvr: 0.030, startAgo: 44 },
-      { id: 's2', name: '예시 · 여름 프로모션', color: 'orange', impr: 22000, ctr: 0.012, cpc: 520, cvr: 0.020, startAgo: 30 },
-      { id: 's3', name: '예시 · 리타게팅', color: 'teal', impr: 6000, ctr: 0.031, cpc: 290, cvr: 0.060, startAgo: 30 },
-    ];
-
-    var performance = [];
-    camps.forEach(function (c) {
-      for (var ago = c.startAgo; ago >= 0; ago--) {
-        var date = d(-ago);
-        var dow = new Date(date + 'T00:00:00Z').getUTCDay();
-        var weekend = dow === 0 || dow === 6 ? 0.8 : 1;
-        var n = function () { return 0.75 + rand() * 0.5; };   // 0.75 ~ 1.25
-        var impressions = Math.round(c.impr * weekend * n());
-        var clicks = Math.round(impressions * c.ctr * n());
-        performance.push({
-          campaignId: c.id, date: date, impressions: impressions, clicks: clicks,
-          cost: Math.round(clicks * c.cpc * n() / 10) * 10,
-          conversions: Math.round(clicks * c.cvr * n()),
-        });
-      }
-    });
-
-    var budgets = [
-      { campaignId: 's1', start: d(-44), end: d(15), amount: 6500000, memo: '런칭 1차 집행' },
-      { campaignId: 's1', start: d(16), end: d(45), amount: 3000000, memo: '런칭 2차 (집행 전)' },
-      { campaignId: 's2', start: d(-30), end: d(30), amount: 9000000, memo: '여름 시즌 전체' },
-      { campaignId: 's3', start: d(-30), end: d(10), amount: 1800000, memo: '리타게팅 (예산 빠듯함)' },
+    var campaigns = [
+      { id: 's1', name: '예시 · 브랜드 런칭', color: 'indigo' },
+      { id: 's2', name: '예시 · 여름 프로모션', color: 'orange' },
+      { id: 's3', name: '예시 · 리타게팅', color: 'teal' },
     ];
 
     var histories = [
@@ -72,7 +37,6 @@
       { campaignId: 's2', title: '봄 시즌 배너 (종료)', type: '배너', status: 'done', memo: '', checklist: check(base, 5) },
     ];
 
-    return { campaigns: camps.map(function (c) { return { id: c.id, name: c.name, color: c.color }; }),
-      histories: histories, performance: performance, budgets: budgets, creatives: creatives };
+    return { campaigns: campaigns, histories: histories, creatives: creatives };
   };
 })();

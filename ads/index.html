@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>어도비</title>
-  <meta name="description" content="어도비 광고 계정 캠페인별 기록·성과·예산·소재 관리">
+  <meta name="description" content="어도비 광고 계정 캠페인별 히스토리·소재일정 관리">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234338ca'/%3E%3Crect x='6' y='17' width='5' height='9' rx='1.5' fill='%23fff'/%3E%3Crect x='13.5' y='11' width='5' height='15' rx='1.5' fill='%23fff'/%3E%3Crect x='21' y='6' width='5' height='20' rx='1.5' fill='%23fff'/%3E%3C/svg%3E">
   <!-- 깜빡임 방지: 화면이 그려지기 전에 저장된(또는 OS) 테마를 먼저 적용 -->
@@ -21,8 +21,8 @@
 <body>
   <header class="topbar">
     <div class="topbar__inner">
-      <a class="brand" href="./" aria-label="어도비 홈">
-        <span class="brand__mark" aria-hidden="true"></span>
+      <a class="brand" href="index.html" aria-label="어도비 홈">
+        <img class="brand__logo" src="img/adobe-mark.svg" alt="" width="30" height="27">
         <span class="brand__text"><strong>어도비</strong><small>ADOBE</small></span>
       </a>
       <div class="topbar__actions">
@@ -34,10 +34,8 @@
     </div>
     <nav class="tabs" aria-label="메뉴">
       <div class="tabs__inner" role="tablist">
-        <button type="button" role="tab" class="tab" data-tab="records" aria-selected="false">기록장</button>
-        <button type="button" role="tab" class="tab" data-tab="performance" aria-selected="false">성과</button>
-        <button type="button" role="tab" class="tab" data-tab="budget" aria-selected="false">예산·일정</button>
-        <button type="button" role="tab" class="tab" data-tab="creatives" aria-selected="false">소재</button>
+        <button type="button" role="tab" class="tab" data-tab="records" aria-selected="false">히스토리</button>
+        <button type="button" role="tab" class="tab" data-tab="creatives" aria-selected="false">소재일정</button>
       </div>
     </nav>
   </header>
@@ -66,8 +64,6 @@
       </div>
 
       <div id="view-records" class="view" role="tabpanel" hidden></div>
-      <div id="view-performance" class="view" role="tabpanel" hidden></div>
-      <div id="view-budget" class="view" role="tabpanel" hidden></div>
       <div id="view-creatives" class="view" role="tabpanel" hidden></div>
     </section>
   </main>
@@ -101,10 +97,7 @@
   <script src="js/store.js"></script>
   <script src="js/sample.js"></script>
   <script src="js/ui.js"></script>
-  <script src="js/charts.js"></script>
   <script src="js/records.js"></script>
-  <script src="js/performance.js"></script>
-  <script src="js/budget.js"></script>
   <script src="js/creatives.js"></script>
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>

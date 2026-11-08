@@ -28,23 +28,10 @@
     return n;
   }
 
-  // ---------- 숫자·날짜 표시 ----------
-  function fmtNum(n) { return n == null || !isFinite(n) ? '-' : Math.round(n).toLocaleString('ko-KR'); }
-  function fmtMoney(n) { return n == null || !isFinite(n) ? '-' : Math.round(n).toLocaleString('ko-KR') + '원'; }
-  function fmtPct(n, d) { return n == null || !isFinite(n) ? '-' : n.toFixed(d == null ? 2 : d) + '%'; }
-  function fmtCompact(n) {     // 차트 눈금용: 1.2억 / 3.4만 / 1,200
-    if (n == null || !isFinite(n)) return '-';
-    var a = Math.abs(n);
-    if (a >= 1e8) return trim(n / 1e8) + '억';
-    if (a >= 1e4) return trim(n / 1e4) + '만';
-    return Math.round(n * 100) / 100 === Math.round(n) ? Math.round(n).toLocaleString('ko-KR') : String(Math.round(n * 100) / 100);
-  }
-  function trim(x) { return String(Math.round(x * 10) / 10).replace(/\.0$/, ''); }
   function fmtDate(iso) {
     var p = iso.split('-').map(Number);
     return p[0] + '년 ' + p[1] + '월 ' + p[2] + '일 (' + WEEKDAYS[new Date(p[0], p[1] - 1, p[2]).getDay()] + ')';
   }
-  function fmtMd(iso) { return iso.slice(5); }
 
   // ---------- 알림 ----------
   var toastTimer;
@@ -101,7 +88,7 @@
   function stamp() { return A.calc.today().replace(/-/g, ''); }
 
   A.ui = {
-    el: el, fmtNum: fmtNum, fmtMoney: fmtMoney, fmtPct: fmtPct, fmtCompact: fmtCompact, fmtDate: fmtDate, fmtMd: fmtMd,
+    el: el, fmtDate: fmtDate,
     toast: toast, report: report, highlight: highlight, download: download, readText: readText, stamp: stamp,
     badge: function (c) { return el('span', { class: 'badge', 'data-c': c.color, text: c.name }); },
   };

@@ -10,7 +10,7 @@
                 ['green', '초록'], ['violet', '보라'], ['orange', '주황'], ['slate', '회색']];
   var TYPES = ['배너', '영상', '텍스트', '이메일', '기타'];
   var STATUSES = [['ready', '준비'], ['live', '집행 중'], ['done', '종료']];
-  var LIMITS = { campaigns: 100, histories: 5000, performance: 20000, budgets: 500, creatives: 1000, checklist: 30 };
+  var LIMITS = { campaigns: 100, histories: 5000, creatives: 1000, checklist: 30 };
   var DEFAULT_CHECKLIST = ['규격·사이즈 확인', '문구 검수', '랜딩 링크 확인', 'UTM 파라미터 확인', '승인 완료'];
 
   var state = empty();
@@ -19,7 +19,7 @@
   var loadWarning = '';
   var saveErrorHandler = null;
 
-  function empty() { return { version: 1, campaigns: [], histories: [], performance: [], budgets: [], creatives: [] }; }
+  function empty() { return { version: 1, campaigns: [], histories: [], creatives: [] }; }
   function uid() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
@@ -53,26 +53,6 @@
         createdAt: nn(h.createdAt) || Date.now() });
     });
 
-    var seen = {};
-    arr(raw.performance).slice(0, LIMITS.performance).forEach(function (p) {
-      if (!p || !ids[p.campaignId] || !calc.validDate(p.date)) return;
-      var im = nn(p.impressions), cl = nn(p.clicks), co = nn(p.cost), cv = nn(p.conversions);
-      if (im === null || cl === null || co === null || cv === null) return;
-      var key = p.campaignId + '|' + p.date;
-      if (seen[key]) return;
-      seen[key] = true;
-      out.performance.push({ id: str(p.id, 64) || uid(), campaignId: p.campaignId, date: p.date,
-        impressions: im, clicks: cl, cost: co, conversions: cv });
-    });
-
-    arr(raw.budgets).slice(0, LIMITS.budgets).forEach(function (b) {
-      if (!b || !ids[b.campaignId] || !calc.validDate(b.start) || !calc.validDate(b.end) || b.end < b.start) return;
-      var amount = nn(b.amount);
-      if (amount === null) return;
-      out.budgets.push({ id: str(b.id, 64) || uid(), campaignId: b.campaignId, start: b.start, end: b.end,
-        amount: amount, memo: str(b.memo, 100) });
-    });
-
     arr(raw.creatives).slice(0, LIMITS.creatives).forEach(function (c) {
       if (!c || !ids[c.campaignId]) return;
       var title = str(c.title, 80);
@@ -99,9 +79,19 @@
     var raw = null;
     try { raw = localStorage.getItem(KEY); } catch (e) { storageOk = false; }
     if (!raw) { state = empty(); return; }
-    try { state = sanitize(JSON.parse(raw)); }
-    catch (e) {
-      try { localStorage.setItem(KEY + '-corrupt', raw); } catch (e2) {}
+    try {
+      var parsed = JSON.parse(raw);
+      // 지금 버전에는 "성과·예산" 기능이 없음. 예전에 입력한 데이터가 있으면 지워지기 전에 따로 한 번 보관해 둠
+      if (arr(parsed.performance).length || arr(parsed.budgets).length) {
+        try {
+          if (!localStorage.getItem(KEY + '-removed')) {
+            localStorage.setItem(KEY + '-removed', JSON.stringify({ performance: arr(parsed.performance), budgets: arr(parsed.budgets), savedAt: new Date().toISOString() }));
+          }
+        } catch (e2) {}
+      }
+      state = sanitize(parsed);
+    } catch (e) {
+      try { localStorage.setItem(KEY + '-corrupt', raw); } catch (e3) {}
       state = empty();
       loadWarning = '저장된 데이터를 읽지 못해 새로 시작했어요. (원본은 브라우저에 보관해 두었어요)';
     }
@@ -136,9 +126,9 @@
     c.name = v.name; c.color = v.color;
     return { ok: true, item: c, saved: commit() };
   }
-  function deleteCampaign(id) {   // 소속된 기록·성과·예산·소재도 함께 삭제
+  function deleteCampaign(id) {   // 소속된 히스토리·소재도 함께 삭제
     if (!campaignById(id)) return err('없는 캠페인이에요.');
-    ['campaigns', 'histories', 'performance', 'budgets', 'creatives'].forEach(function (k) {
+    ['campaigns', 'histories', 'creatives'].forEach(function (k) {
       state[k] = state[k].filter(function (x) { return (k === 'campaigns' ? x.id : x.campaignId) !== id; });
     });
     return { ok: true, saved: commit() };
@@ -157,13 +147,13 @@
     return c.id;
   }
 
-  // ---------- 기록 ----------
+  // ---------- 히스토리 ----------
   function addHistory(i) {
     if (!i || !campaignById(i.campaignId)) return err('캠페인을 선택해 주세요.');
     if (!calc.validDate(i.date)) return err('날짜를 올바르게 입력해 주세요.');
     var content = str(i.content, 1001);
     if (!content || content.length > 1000) return err('내용은 1~1000자로 적어 주세요.');
-    if (state.histories.length >= LIMITS.histories) return err('기록은 ' + LIMITS.histories + '개까지 저장할 수 있어요.');
+    if (state.histories.length >= LIMITS.histories) return err('히스토리는 ' + LIMITS.histories + '개까지 저장할 수 있어요.');
     var h = { id: uid(), campaignId: i.campaignId, date: i.date, content: content, createdAt: Date.now() };
     state.histories.push(h);
     return { ok: true, item: h, saved: commit() };
@@ -171,7 +161,7 @@
   function deleteHistory(id) {
     var n = state.histories.length;
     state.histories = state.histories.filter(function (h) { return h.id !== id; });
-    return n === state.histories.length ? err('없는 기록이에요.') : { ok: true, saved: commit() };
+    return n === state.histories.length ? err('없는 히스토리예요.') : { ok: true, saved: commit() };
   }
   function addHistories(items, opts) {
     var created = [], added = 0, skipped = 0;
@@ -184,81 +174,7 @@
     return { ok: true, added: added, skipped: skipped, created: created, saved: commit() };
   }
 
-  // ---------- 성과 (같은 캠페인·같은 날짜는 덮어씀) ----------
-  function perfFields(i) {
-    var out = {}, bad = false;
-    ['impressions', 'clicks', 'cost', 'conversions'].forEach(function (k) {
-      var n = nn(i[k]);
-      if (n === null) bad = true; else out[k] = n;
-    });
-    return bad ? null : out;
-  }
-  function findPerf(cid, date) {
-    return state.performance.find(function (p) { return p.campaignId === cid && p.date === date; });
-  }
-  function upsertPerformance(i) {
-    if (!i || !campaignById(i.campaignId)) return err('캠페인을 선택해 주세요.');
-    if (!calc.validDate(i.date)) return err('날짜를 올바르게 입력해 주세요.');
-    var f = perfFields(i);
-    if (!f) return err('숫자는 0 이상으로 입력해 주세요.');
-    var ex = findPerf(i.campaignId, i.date);
-    if (ex) { Object.assign(ex, f); return { ok: true, item: ex, replaced: true, saved: commit() }; }
-    if (state.performance.length >= LIMITS.performance) return err('성과 데이터는 ' + LIMITS.performance + '건까지 저장할 수 있어요.');
-    var p = Object.assign({ id: uid(), campaignId: i.campaignId, date: i.date }, f);
-    state.performance.push(p);
-    return { ok: true, item: p, replaced: false, saved: commit() };
-  }
-  function upsertPerformanceMany(items, opts) {
-    var created = [], added = 0, replaced = 0, skipped = 0;
-    var map = {};
-    state.performance.forEach(function (p) { map[p.campaignId + '|' + p.date] = p; });
-    items.forEach(function (it) {
-      var cid = idByName(it.campaignName, opts && opts.autoCreate, created);
-      if (!cid) { skipped++; return; }
-      var f = perfFields(it), key = cid + '|' + it.date;
-      if (!f) { skipped++; return; }
-      if (map[key]) { Object.assign(map[key], f); replaced++; return; }
-      if (state.performance.length >= LIMITS.performance) { skipped++; return; }
-      var p = Object.assign({ id: uid(), campaignId: cid, date: it.date }, f);
-      state.performance.push(p); map[key] = p; added++;
-    });
-    return { ok: true, added: added, replaced: replaced, skipped: skipped, created: created, saved: commit() };
-  }
-  function deletePerformance(id) {
-    var n = state.performance.length;
-    state.performance = state.performance.filter(function (p) { return p.id !== id; });
-    return n === state.performance.length ? err('없는 데이터예요.') : { ok: true, saved: commit() };
-  }
-
-  // ---------- 예산 ----------
-  function addBudget(i) {
-    if (!i || !campaignById(i.campaignId)) return err('캠페인을 선택해 주세요.');
-    if (!calc.validDate(i.start) || !calc.validDate(i.end)) return err('시작일과 종료일을 올바르게 입력해 주세요.');
-    if (i.end < i.start) return err('종료일이 시작일보다 앞이에요.');
-    var amount = nn(i.amount);
-    if (amount === null) return err('예산 금액은 0 이상의 숫자로 입력해 주세요.');
-    if (state.budgets.length >= LIMITS.budgets) return err('예산은 ' + LIMITS.budgets + '개까지 저장할 수 있어요.');
-    var b = { id: uid(), campaignId: i.campaignId, start: i.start, end: i.end, amount: Math.round(amount), memo: str(i.memo, 100) };
-    state.budgets.push(b);
-    return { ok: true, item: b, saved: commit() };
-  }
-  function addBudgets(items, opts) {
-    var created = [], added = 0, skipped = 0;
-    items.forEach(function (it) {
-      var cid = idByName(it.campaignName, opts && opts.autoCreate, created);
-      if (!cid || state.budgets.length >= LIMITS.budgets) { skipped++; return; }
-      state.budgets.push({ id: uid(), campaignId: cid, start: it.start, end: it.end, amount: it.amount, memo: it.memo || '' });
-      added++;
-    });
-    return { ok: true, added: added, skipped: skipped, created: created, saved: commit() };
-  }
-  function deleteBudget(id) {
-    var n = state.budgets.length;
-    state.budgets = state.budgets.filter(function (b) { return b.id !== id; });
-    return n === state.budgets.length ? err('없는 예산이에요.') : { ok: true, saved: commit() };
-  }
-
-  // ---------- 소재 · 체크리스트 ----------
+  // ---------- 소재일정 · 체크리스트 ----------
   function creativeById(id) { return state.creatives.find(function (c) { return c.id === id; }); }
   function addCreative(i) {
     if (!i || !campaignById(i.campaignId)) return err('캠페인을 선택해 주세요.');
@@ -309,8 +225,8 @@
 
   // ---------- 백업 · 복원 · 초기화 ----------
   function counts(d) {
-    return { campaigns: d.campaigns.length, histories: d.histories.length, performance: d.performance.length,
-      budgets: d.budgets.length, creatives: d.creatives.length };
+    d = d || state;
+    return { campaigns: d.campaigns.length, histories: d.histories.length, creatives: d.creatives.length };
   }
   function exportJSON() {
     return JSON.stringify({ app: 'ads-operations', exportedAt: new Date().toISOString(), data: state }, null, 2);
@@ -322,7 +238,8 @@
     var raw = parsed && parsed.data && typeof parsed.data === 'object' ? parsed.data : parsed;
     if (!raw || typeof raw !== 'object' || !Array.isArray(raw.campaigns)) return err('백업 파일 형식이 아니에요.');
     var clean = sanitize(raw);
-    return { ok: true, data: clean, counts: counts(clean), dropped: raw.campaigns.length - clean.campaigns.length };
+    return { ok: true, data: clean, counts: counts(clean), dropped: raw.campaigns.length - clean.campaigns.length,
+      hasRemoved: arr(raw.performance).length > 0 || arr(raw.budgets).length > 0 };   // 예전 버전의 성과·예산이 들어 있었는지
   }
   function replaceAll(data) { state = sanitize(data); return { ok: true, saved: commit() }; }
   function clearAll() { state = empty(); return { ok: true, saved: commit() }; }
@@ -348,8 +265,6 @@
     campaignById: campaignById, creativeById: creativeById, nextColor: nextColor,
     addCampaign: addCampaign, updateCampaign: updateCampaign, deleteCampaign: deleteCampaign,
     addHistory: addHistory, addHistories: addHistories, deleteHistory: deleteHistory,
-    upsertPerformance: upsertPerformance, upsertPerformanceMany: upsertPerformanceMany, deletePerformance: deletePerformance,
-    addBudget: addBudget, addBudgets: addBudgets, deleteBudget: deleteBudget,
     addCreative: addCreative, updateCreative: updateCreative, deleteCreative: deleteCreative,
     addCheck: addCheck, toggleCheck: toggleCheck, removeCheck: removeCheck,
     exportJSON: exportJSON, previewBackup: previewBackup, replaceAll: replaceAll, clearAll: clearAll,
