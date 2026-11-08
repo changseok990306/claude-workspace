@@ -45,12 +45,36 @@ function sameSecret(a, b) {
   return crypto.timingSafeEqual(ha, hb);
 }
 
+// ---- 공개 모드용 쓰기 제한 ----------------------------------------------------
+// 같은 IP 가 1분에 60번을 넘게 추가·삭제하면 잠시 막음 (자동 프로그램이 한꺼번에 지우는 것을 늦추는 용도)
+const WRITE_WINDOW_MS = 60 * 1000;
+const WRITE_MAX = 60;
+const writes = new Map();
+
+function limitWrites(req, res) {
+  const ip = clientIp(req);
+  const now = Date.now();
+  if (writes.size > 1000) writes.clear();
+  const rec = writes.get(ip);
+  if (!rec || now - rec.first >= WRITE_WINDOW_MS) {
+    writes.set(ip, { first: now, count: 1 });
+    return true;
+  }
+  rec.count += 1;
+  if (rec.count > WRITE_MAX) {
+    send(res, 429, { error: '요청이 너무 많아요. 잠시 후 다시 해 주세요.' });
+    return false;
+  }
+  return true;
+}
+
 // 통과하면 true, 아니면 응답을 이미 보냈으니 false
+//   ADMIN_PASSWORD 가 설정돼 있으면 → 잠금 모드 (읽기·쓰기 모두 비밀번호 필요)
+//   ADMIN_PASSWORD 가 없으면       → 공개 모드 (누구나 읽기·쓰기 가능, 쓰기는 횟수 제한)
 function requireAuth(req, res) {
   const expected = process.env.ADMIN_PASSWORD;
   if (!expected) {
-    send(res, 500, { error: '서버 설정이 아직 안 되어 있어요.' });
-    return false;
+    return req.method === 'GET' ? true : limitWrites(req, res);
   }
 
   const ip = clientIp(req);

@@ -28,12 +28,14 @@ const TYPES = {
   '.svg': 'image/svg+xml',
 };
 
-const missing = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'ADMIN_PASSWORD'].filter((k) => !process.env[k]);
+const missing = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'].filter((k) => !process.env[k]);
 if (missing.length) {
   console.error(`⚠️  환경변수가 없어요: ${missing.join(', ')}`);
   console.error('   이렇게 실행하세요:  node --env-file=.env.local scripts/dev-server.js');
   process.exit(1);
 }
+// ADMIN_PASSWORD 는 선택: 있으면 잠금 모드, 없으면 공개 모드
+console.log(process.env.ADMIN_PASSWORD ? '🔒 잠금 모드 (비밀번호 필요)' : '🌐 공개 모드 (비밀번호 없음)');
 
 http
   .createServer((req, res) => {
