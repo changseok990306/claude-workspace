@@ -134,6 +134,22 @@ ads/
     └── app.js          탭·캠페인·다크 모드 조율
 ```
 
+## 🚀 Vercel 배포
+
+빌드가 필요 없는 정적 페이지라서 설정이 간단해요. 단, 이 저장소 맨 위의 `vercel.json`은 포트폴리오용이라서 **Root Directory를 `ads`로 지정**해야 이 페이지가 배포돼요. (`ads/vercel.json`이 적용돼요)
+
+1. [vercel.com](https://vercel.com) → **Add New… → Project** → GitHub의 `claude-workspace` 저장소 **Import**
+2. **Root Directory → Edit → `ads`** 선택 ← 가장 중요해요. 비워 두면 포트폴리오가 배포돼요.
+3. Framework Preset은 `Other`, Build Command·Output Directory는 **비워 둠**
+4. **환경변수는 필요 없어요** (서버·DB를 쓰지 않아요)
+5. **Deploy** → 끝나면 나오는 주소로 접속
+6. 이후 `main`에 push할 때마다 자동으로 다시 배포돼요.
+
+배포 뒤 확인할 것
+- 처음 열면 **데이터가 비어 있어요.** 아래 “데이터는 어디에 저장되나요?”대로 **방문하는 브라우저마다 자기 데이터**를 가져요. 예시 데이터 버튼으로 둘러볼 수 있어요.
+- Vercel의 **Deployment Protection(Vercel Authentication)** 이 켜져 있으면 다른 사람은 Vercel 로그인 화면이 떠요. 누구나 열게 하려면 프로젝트 **Settings → Deployment Protection**에서 끄세요.
+- 검색엔진에는 잡히지 않게 `noindex`가 들어 있어요 (`index.html`의 `<meta name="robots">`). 검색에 나오게 하려면 이 줄을 지우세요.
+
 ## 다크 모드
 
 우측 상단 스위치로 바꿔요. 배경 `#1A1A1A` · 카드 `#2D2D2D` · 글자 `#E0E0E0`, 전환은 0.3초 부드럽게.
