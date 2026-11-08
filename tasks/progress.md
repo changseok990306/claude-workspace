@@ -77,3 +77,16 @@
 3. 백업: 삭제 직전 상태를 태그 `backup-adobe-history-v1`(커밋 3a626ce)로 보존. 복구: `git checkout backup-adobe-history-v1 -- adobe-history`
 4. 포트폴리오(`portfolio/`, `api/guestbook.js`)는 건드리지 않음
 5. 새 방식: 기존 포트폴리오 Vercel 프로젝트 + 기존 환경변수(`SUPABASE_URL`, `SUPABASE_ANON_KEY`) 재사용, 주소는 `/history`
+
+## 2026-11-08 — 어도비 캠페인 히스토리 v2 (포트폴리오 방식, 브랜치 `history-page`)
+
+1. `docs/adobe-history-PRD.md` — 기획서(목표·기능 F1~F10·디자인·기술 방향·보안 한계·수용 기준·배포 순서)
+2. `supabase/history.sql` — `campaigns`·`histories` 테이블, 캠페인 삭제 시 히스토리 연쇄 삭제, 공개 키(anon)용 RLS 정책 + 컬럼 단위 권한 (messages.sql과 같은 방식)
+3. `api/_lib.js`, `api/campaigns.js`, `api/histories.js` — 기존 방명록과 같은 환경변수(`SUPABASE_URL`, `SUPABASE_ANON_KEY`) 사용. 입력 검증, 같은 IP 1분 60회 초과 쓰기 차단
+4. `portfolio/history/` — 화면(이전 v1의 검증된 화면에서 비밀번호 부분만 제거). 데이터 불러오기 실패 시 "다시 시도" 안내 화면 추가. 주소 `/history`, noindex, 포트폴리오에는 링크 없음
+5. `scripts/dev-server.js` — `/history`와 새 API 라우팅 추가 (방명록 동작은 그대로)
+6. README에 히스토리 설정·주의사항 추가
+7. 검증(가짜 Supabase + 헤드리스 Chrome): API 33, 화면 51, 공개접근·쓰기제한 14 → 98개 통과. 기존 포트폴리오(`/`)와 방명록 API 정상, `/history`·`/history/` 모두 열림, DB 장애 시 안내 화면→복구→"다시 시도" 동작 확인
+- 미확인: 진짜 Supabase 연결(`history.sql` 아직 미실행), 사파리·실제 휴대폰
+- 주의: 로그인 없는 공개 페이지(사용자 선택) — 누구나 기록을 지울 수 있음. 민감 정보 입력 금지, 중요한 기록은 별도 보관
+- 남은 일: main 머지 + push(사용자 확인 후), 사용자가 Supabase에서 `history.sql` 실행

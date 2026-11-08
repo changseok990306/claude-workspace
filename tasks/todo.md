@@ -5,7 +5,24 @@
 
 ---
 
-## 2026-11-08 — 어도비 캠페인 히스토리 홈페이지 v1 (폐기 — 처음부터 다시, 아래 v2 참고)
+## 2026-11-08 — 어도비 캠페인 히스토리 v2 (진행 중, 브랜치 `history-page`)
+
+방식: 포트폴리오와 똑같이. **기존 Vercel 프로젝트** + **기존 환경변수**(`SUPABASE_URL`, `SUPABASE_ANON_KEY`) → 주소 `/history`. 비밀번호 없음(공개). 새 키·새 프로젝트 없음.
+
+- [x] 1. 브랜치 `history-page` + 이 체크리스트
+- [x] 2. PRD 작성 → `docs/adobe-history-PRD.md`
+- [x] 3. `supabase/history.sql` — `campaigns`, `histories` 테이블 + 공개 규칙(RLS) (아직 Supabase에서 실행 안 함 → 문법 미검증)
+- [x] 4. `api/_lib.js`, `api/campaigns.js`, `api/histories.js` (anon 키, 입력 검증, 쓰기 횟수 제한)
+- [x] 5. 화면 `portfolio/history/` (index.html · style.css · app.js · api.js) + 불러오기 실패 안내 화면
+- [x] 6. `scripts/dev-server.js`가 `/history`와 새 API를 서비스하게 확장
+- [x] 7. 가짜 Supabase로 검사: API 33 + 화면 51 + 공개접근·횟수제한 14 = 98개 통과, 캡처 확인
+- [x] 8. README에 사용법 추가 → 커밋 (브랜치 `history-page`)
+- [ ] 9. (확인 후) main 머지 + push → Vercel 자동 배포
+- [ ] 10. (직접) Supabase SQL Editor에서 `history.sql` 실행 → `…/history` 접속
+
+---
+
+## 2026-11-08 — 어도비 캠페인 히스토리 홈페이지 v1 (폐기 — 처음부터 다시, 위 v2 참고)
 
 > 백업 태그 `backup-adobe-history-v1`. 아래 체크리스트는 기록용으로만 남김.
 
