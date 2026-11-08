@@ -5,6 +5,28 @@
 
 ---
 
+## 2026-11-08 — 어도비 캠페인 히스토리 홈페이지 (진행 중)
+
+계획서: `~/.claude/plans/sorted-launching-mountain.md` (승인됨)
+방식: 새 폴더 `adobe-history/` → 별도 Vercel 프로젝트 (Root Directory = `adobe-history`). 브라우저 → Vercel 함수 → Supabase. 기존 포트폴리오는 건드리지 않음.
+
+- [x] 1. `tasks/todo.md`에 체크리스트 기록
+- [x] 2. `adobe-history/` 골격 + `vercel.json` + `.env.example` (브랜치 `adobe-history`)
+- [x] 3. `supabase/adobe_history.sql` 작성
+- [ ] 3b. (직접) Supabase SQL Editor에서 실행
+- [x] 4. API 3개(`campaigns`, `histories`, `_lib`) + 비밀번호 인증 + 로컬 dev 서버 — 가짜 Supabase로 37개 검사 통과
+- [ ] 4b. 진짜 Supabase로 같은 검사 한 번 더 (3b 완료 + `.env.local` 채운 뒤)
+- [x] 5. UI: 레이아웃 / 다크·라이트 토글 / 캠페인 색상 톤 (헤드리스 Chrome 43개 검사 통과 + 캡처 확인)
+- [x] 6. 히스토리 추가·삭제·날짜 입력·날짜 역순 정렬
+- [x] 7. 실시간 검색(내용+날짜) + 하이라이트
+- [ ] 7b. (직접) 화면 확인 → 수정할 점 전달 → 반영
+- [ ] 8. 반응형 점검(375/768 완료) + `README.md`(Vercel 배포 가이드) 작성
+- [ ] 9. `progress.md` 기록 + 브랜치 커밋 (push/머지는 승인 후)
+- [x] 10. `.gitignore` 점검 — `git check-ignore`로 확인: `.env.local` 무시됨, `.env.example`은 커밋 가능 (수정 불필요)
+- [ ] 11. (직접) Vercel 프로젝트 생성 → 환경변수 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD` 등록 → 배포
+
+---
+
 ## 2026-11-01 — 포트폴리오 방명록 붙이기 (진행 중 — 머지·배포만 남음)
 
 방식: 브라우저 → **Vercel 함수(`api/guestbook.js`)** → Supabase. 키는 Vercel 환경변수에만 보관 (코드에 하드코딩 X)
