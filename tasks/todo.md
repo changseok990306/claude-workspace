@@ -23,7 +23,11 @@
 - [ ] 8. 반응형 점검(375/768 완료) + `README.md`(Vercel 배포 가이드) 작성
 - [ ] 9. `progress.md` 기록 + 브랜치 커밋 (push/머지는 승인 후)
 - [x] 10. `.gitignore` 점검 — `git check-ignore`로 확인: `.env.local` 무시됨, `.env.example`은 커밋 가능 (수정 불필요)
-- [ ] 11. (직접) Vercel 프로젝트 생성 → 환경변수 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_PASSWORD` 등록 → 배포
+- [ ] 11. (직접) Vercel 프로젝트 생성 → 환경변수 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` 등록 → 배포 (`ADMIN_PASSWORD`는 선택: 비우면 공개, 넣으면 잠금)
+- [x] 12. 비밀번호 없는 "공개 모드" 추가 (브랜치 `open-access`, 검사 통과) — 커밋 완료
+- [ ] 12b. `open-access`를 main에 머지 + push (사용자 확인 대기)
+- [ ] 12c. (직접) Vercel 환경변수 `ADMIN_PASSWORD` **삭제** 후 재배포
+- [ ] 13. `adobe-history/.vercelignore`로 `supabase/`, `scripts/` 등 비공개 처리 검토
 
 ---
 

@@ -408,19 +408,16 @@
   });
 
   // ---------- 시작 ----------
+  // 먼저 그냥 열어 봄: 공개 모드면 바로 열리고, 잠금 모드(401)면 그때 비밀번호 창을 띄움
   async function boot() {
-    if (Api.hasPw()) {
-      try {
-        await loadAll();
-        showApp();
-        return;
-      } catch (err) {
-        Api.clearPw();
-        openLogin(err.status === 401 ? '' : err.message);
-        return;
-      }
+    try {
+      await loadAll();
+      showApp();
+      ui.lockBtn.hidden = !Api.hasPw();   // 비밀번호를 쓰는 경우에만 "잠금" 버튼 표시
+    } catch (err) {
+      Api.clearPw();
+      openLogin(err.status === 401 ? '' : err.message);
     }
-    openLogin('');
   }
   boot();
 })();
