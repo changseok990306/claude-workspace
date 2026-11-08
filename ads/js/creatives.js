@@ -1,9 +1,15 @@
-// (d) 소재·체크리스트 — 광고 소재를 상태(준비/집행 중/종료)별로 관리하고 점검 항목을 체크
+// 소재일정 탭 — 맨 위: 소재 변경 일정 캘린더(schedule.js) / 그 아래: 광고 소재 점검 보드(상태별 + 체크리스트)
 (function () {
   'use strict';
   var A = window.Ads, calc = A.calc, store = A.store, ui = A.ui, el = ui.el;
 
-  A.views.creatives = function (ctx, root) {
+  A.views.creatives = function (ctx, outer) {
+    var schedHost = el('div', { class: 'view' }), boardHost = el('div', { class: 'view' });
+    var heading = el('h2', { class: 'section-title', text: '소재 점검 (상태 · 체크리스트)' });
+    outer.append(schedHost, heading, boardHost);
+    var sched = A.views.schedule(ctx, schedHost);
+    var root = boardHost;      // 아래 소재 점검 보드는 이 영역 안에서만 동작
+
     root.innerHTML =
       '<div class="toolbar">' +
         '<label class="field"><span>종류</span><select data-role="type"><option value="all">전체</option></select></label>' +
@@ -157,11 +163,13 @@
     return {
       render: function () {
         var has = store.get().campaigns.length > 0;
+        sched.render();
+        heading.hidden = !has;
         ctx.fillSelect(fSel);
         [fSel, fTitle, fType, fStatus, fMemo, fCheck, submit].forEach(function (n) { n.disabled = !has; });
         syncColor();
         if (!has) {
-          board.replaceChildren(ctx.emptyState()); result.textContent = '';
+          board.replaceChildren(); result.textContent = '';   // 안내는 위쪽 달력 영역이 보여 줌
           return;
         }
         if (!store.get().creatives.length) formCard.open = true;

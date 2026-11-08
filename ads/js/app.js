@@ -6,7 +6,7 @@
   function $(id) { return document.getElementById(id); }
   var TABS = {
     records: { label: '히스토리', sub: '캠페인별 변경·이슈·결정 기록', count: 'histories' },
-    creatives: { label: '소재일정', sub: '광고 소재와 점검 체크리스트', count: 'creatives' },
+    creatives: { label: '소재일정', sub: '소재 변경 일정 캘린더와 소재 점검', count: 'schedules' },
   };
   var TAB_ORDER = ['records', 'creatives'];
   var UI_KEY = 'ads-ui-v1';
@@ -171,7 +171,7 @@
     if (!c) return;
     var s = store.get(), n = function (k) { return s[k].filter(function (x) { return x.campaignId === c.id; }).length; };
     if (!confirm('“' + c.name + '” 캠페인과 그 안의 히스토리 ' + n('histories') + '개, 소재 ' + n('creatives') +
-      '개가 모두 삭제돼요.\n\n이 작업은 되돌릴 수 없어요. (데이터 메뉴에서 백업을 받아 두면 안전해요)\n진행할까요?')) return;
+      '개, 일정 ' + n('schedules') + '개가 모두 삭제돼요.\n\n이 작업은 되돌릴 수 없어요. (데이터 메뉴에서 백업을 받아 두면 안전해요)\n진행할까요?')) return;
     var res = store.deleteCampaign(c.id);
     if (ui.report(res, '삭제했어요.')) ctx.setCampaign('all');
   });

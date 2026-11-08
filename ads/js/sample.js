@@ -37,6 +37,19 @@
       { campaignId: 's2', title: '봄 시즌 배너 (종료)', type: '배너', status: 'done', memo: '', checklist: check(base, 5) },
     ];
 
-    return { campaigns: campaigns, histories: histories, creatives: creatives };
+    // 소재 변경 일정 (type: swap 교체 / open 신규 오픈 / end 종료 / check 점검)
+    var schedules = [
+      { campaignId: 's1', date: d(-15), type: 'open', title: '런칭 메인 배너 A 오픈', memo: '', done: true },
+      { campaignId: 's1', date: d(-6), type: 'swap', title: '메인 배너 A → B 교체', memo: 'A/B 테스트 결과 반영', done: true },
+      { campaignId: 's2', date: d(0), type: 'check', title: '프로모션 랜딩 링크 점검', memo: 'UTM 파라미터 포함 여부', done: false },
+      { campaignId: 's3', date: d(3), type: 'swap', title: '장바구니 리마인드 배너 3종 교체', memo: '', done: false },
+      { campaignId: 's1', date: d(2), type: 'swap', title: '런칭 영상 15초 업로드', memo: '자막 최종본 확인 후', done: false },
+      { campaignId: 's2', date: d(5), type: 'swap', title: '할인율 문구 변경 (20% → 30%)', memo: '', done: false },
+      { campaignId: 's2', date: d(5), type: 'end', title: '봄 시즌 배너 종료', memo: '', done: false },
+      { campaignId: 's1', date: d(9), type: 'open', title: '가을 시즌 배너 오픈', memo: '', done: false },
+      { campaignId: 's3', date: d(35), type: 'end', title: '리타게팅 소재 종료', memo: '다음 달 일정 예시', done: false },
+    ];
+
+    return { campaigns: campaigns, histories: histories, creatives: creatives, schedules: schedules };
   };
 })();

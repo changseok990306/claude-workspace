@@ -10,7 +10,9 @@
                 ['green', '초록'], ['violet', '보라'], ['orange', '주황'], ['slate', '회색']];
   var TYPES = ['배너', '영상', '텍스트', '이메일', '기타'];
   var STATUSES = [['ready', '준비'], ['live', '집행 중'], ['done', '종료']];
-  var LIMITS = { campaigns: 100, histories: 5000, creatives: 1000, checklist: 30 };
+  // 소재 변경 일정의 종류 [키, 이름, 달력에 붙는 기호]
+  var SCHEDULE_TYPES = [['swap', '소재 교체', '↻'], ['open', '신규 오픈', '＋'], ['end', '종료', '■'], ['check', '점검', '✓']];
+  var LIMITS = { campaigns: 100, histories: 5000, creatives: 1000, checklist: 30, schedules: 2000 };
   var DEFAULT_CHECKLIST = ['규격·사이즈 확인', '문구 검수', '랜딩 링크 확인', 'UTM 파라미터 확인', '승인 완료'];
 
   var state = empty();
@@ -19,7 +21,7 @@
   var loadWarning = '';
   var saveErrorHandler = null;
 
-  function empty() { return { version: 1, campaigns: [], histories: [], creatives: [] }; }
+  function empty() { return { version: 1, campaigns: [], histories: [], creatives: [], schedules: [] }; }
   function uid() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
@@ -29,6 +31,7 @@
   function nn(v) { var n = typeof v === 'number' ? v : Number(v); return isFinite(n) && n >= 0 && n <= 1e13 ? n : null; }
   function colorOk(c) { return COLORS.some(function (p) { return p[0] === c; }); }
   function statusOk(s) { return STATUSES.some(function (p) { return p[0] === s; }); }
+  function schedTypeOk(t) { return SCHEDULE_TYPES.some(function (p) { return p[0] === t; }); }
   function err(msg) { return { ok: false, error: msg }; }
 
   // ---------- 불러온 데이터를 안전한 모양으로 정리 (손상·조작된 값 제거) ----------
@@ -65,6 +68,14 @@
       out.creatives.push({ id: str(c.id, 64) || uid(), campaignId: c.campaignId, title: title,
         type: TYPES.indexOf(c.type) !== -1 ? c.type : '기타', status: statusOk(c.status) ? c.status : 'ready',
         memo: str(c.memo, 300), checklist: list, createdAt: nn(c.createdAt) || Date.now() });
+    });
+    arr(raw.schedules).slice(0, LIMITS.schedules).forEach(function (x) {
+      if (!x || !ids[x.campaignId] || !calc.validDate(x.date)) return;
+      var title = str(x.title, 80);
+      if (!title) return;
+      out.schedules.push({ id: str(x.id, 64) || uid(), campaignId: x.campaignId, date: x.date,
+        type: schedTypeOk(x.type) ? x.type : 'swap', title: title, memo: str(x.memo, 300),
+        done: x.done === true, createdAt: nn(x.createdAt) || Date.now() });
     });
     return out;
   }
@@ -126,9 +137,9 @@
     c.name = v.name; c.color = v.color;
     return { ok: true, item: c, saved: commit() };
   }
-  function deleteCampaign(id) {   // 소속된 히스토리·소재도 함께 삭제
+  function deleteCampaign(id) {   // 소속된 히스토리·소재·일정도 함께 삭제
     if (!campaignById(id)) return err('없는 캠페인이에요.');
-    ['campaigns', 'histories', 'creatives'].forEach(function (k) {
+    ['campaigns', 'histories', 'creatives', 'schedules'].forEach(function (k) {
       state[k] = state[k].filter(function (x) { return (k === 'campaigns' ? x.id : x.campaignId) !== id; });
     });
     return { ok: true, saved: commit() };
@@ -223,10 +234,37 @@
     return { ok: true, saved: commit() };
   }
 
+  // ---------- 소재 변경 일정 (캘린더) ----------
+  function scheduleById(id) { return state.schedules.find(function (x) { return x.id === id; }); }
+  function addSchedule(i) {
+    if (!i || !campaignById(i.campaignId)) return err('캠페인을 선택해 주세요.');
+    if (!calc.validDate(i.date)) return err('날짜를 올바르게 입력해 주세요.');
+    var title = str(i.title, 81);
+    if (!title || title.length > 80) return err('일정 내용은 1~80자로 적어 주세요.');
+    var type = i.type === undefined ? 'swap' : i.type;
+    if (!schedTypeOk(type)) return err('일정 종류가 올바르지 않아요.');
+    if (state.schedules.length >= LIMITS.schedules) return err('일정은 ' + LIMITS.schedules + '개까지 저장할 수 있어요.');
+    var x = { id: uid(), campaignId: i.campaignId, date: i.date, type: type, title: title,
+      memo: str(i.memo, 300), done: false, createdAt: Date.now() };
+    state.schedules.push(x);
+    return { ok: true, item: x, saved: commit() };
+  }
+  function toggleSchedule(id) {      // 확인 완료 ↔ 미완료
+    var x = scheduleById(id);
+    if (!x) return err('없는 일정이에요.');
+    x.done = !x.done;
+    return { ok: true, item: x, saved: commit() };
+  }
+  function deleteSchedule(id) {
+    var n = state.schedules.length;
+    state.schedules = state.schedules.filter(function (x) { return x.id !== id; });
+    return n === state.schedules.length ? err('없는 일정이에요.') : { ok: true, saved: commit() };
+  }
+
   // ---------- 백업 · 복원 · 초기화 ----------
   function counts(d) {
     d = d || state;
-    return { campaigns: d.campaigns.length, histories: d.histories.length, creatives: d.creatives.length };
+    return { campaigns: d.campaigns.length, histories: d.histories.length, creatives: d.creatives.length, schedules: d.schedules.length };
   }
   function exportJSON() {
     return JSON.stringify({ app: 'ads-operations', exportedAt: new Date().toISOString(), data: state }, null, 2);
@@ -257,16 +295,17 @@
   load();
 
   A.store = {
-    COLORS: COLORS, TYPES: TYPES, STATUSES: STATUSES, LIMITS: LIMITS, KEY: KEY,
+    COLORS: COLORS, TYPES: TYPES, STATUSES: STATUSES, SCHEDULE_TYPES: SCHEDULE_TYPES, LIMITS: LIMITS, KEY: KEY,
     get: function () { return state; },
     subscribe: function (fn) { listeners.push(fn); },
     status: function () { return { storageOk: storageOk, loadWarning: loadWarning }; },
     onSaveError: function (fn) { saveErrorHandler = fn; },
-    campaignById: campaignById, creativeById: creativeById, nextColor: nextColor,
+    campaignById: campaignById, creativeById: creativeById, scheduleById: scheduleById, nextColor: nextColor,
     addCampaign: addCampaign, updateCampaign: updateCampaign, deleteCampaign: deleteCampaign,
     addHistory: addHistory, addHistories: addHistories, deleteHistory: deleteHistory,
     addCreative: addCreative, updateCreative: updateCreative, deleteCreative: deleteCreative,
     addCheck: addCheck, toggleCheck: toggleCheck, removeCheck: removeCheck,
+    addSchedule: addSchedule, toggleSchedule: toggleSchedule, deleteSchedule: deleteSchedule,
     exportJSON: exportJSON, previewBackup: previewBackup, replaceAll: replaceAll, clearAll: clearAll,
     addSample: addSample, counts: function () { return counts(state); },
     _sanitize: sanitize,

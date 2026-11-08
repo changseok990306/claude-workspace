@@ -28,9 +28,39 @@
   }
   function utc(iso) { return new Date(iso + 'T00:00:00Z').getTime(); }
   function addDays(iso, n) { return new Date(utc(iso) + n * DAY).toISOString().slice(0, 10); }
+  function daysBetween(a, b) { return Math.round((utc(b) - utc(a)) / DAY); }
   function today(now) {
     var d = now || new Date();
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  // ---------- 달력 ----------
+  function monthStart(iso) { return iso.slice(0, 7) + '-01'; }
+  function monthEnd(iso) {      // 그 달의 마지막 날 (다음 달 1일의 하루 전)
+    var y = +iso.slice(0, 4), m = +iso.slice(5, 7);
+    return addDays((m === 12 ? y + 1 : y) + '-' + pad(m === 12 ? 1 : m + 1) + '-01', -1);
+  }
+  // n 달 뒤(음수면 앞)의 1일: addMonths('2026-01-31', 1) → '2026-02-01'
+  function addMonths(iso, n) {
+    var total = (+iso.slice(0, 4)) * 12 + (+iso.slice(5, 7) - 1) + n;
+    return Math.floor(total / 12) + '-' + pad((total % 12) + 1) + '-01';
+  }
+  // 월 달력 격자: 일요일 시작, 그 달이 걸친 주만큼 (4~6주). 앞뒤 달 날짜도 채움
+  function monthGrid(iso) {
+    var first = monthStart(iso), last = monthEnd(iso);
+    var start = addDays(first, -new Date(first + 'T00:00:00Z').getUTCDay());
+    var weeks = [];
+    for (var w = start; w <= last; w = addDays(w, 7)) {
+      var row = [];
+      for (var i = 0; i < 7; i++) row.push(addDays(w, i));
+      weeks.push(row);
+    }
+    return { month: first.slice(0, 7), first: first, last: last, weeks: weeks };
+  }
+  // 오늘 기준 남은 날: 0 → "오늘", 3 → "D-3", -2 → "2일 지남"
+  function ddayLabel(todayIso, dateIso) {
+    var n = daysBetween(todayIso, dateIso);
+    return n === 0 ? '오늘' : n > 0 ? 'D-' + n : Math.abs(n) + '일 지남';
   }
 
   // ---------- 검색 ----------
@@ -53,7 +83,8 @@
   }
 
   return {
-    validDate: validDate, normDate: normDate, addDays: addDays, today: today,
+    validDate: validDate, normDate: normDate, addDays: addDays, daysBetween: daysBetween, today: today,
+    monthStart: monthStart, monthEnd: monthEnd, addMonths: addMonths, monthGrid: monthGrid, ddayLabel: ddayLabel,
     tokensOf: tokensOf, dateForms: dateForms, matches: matches, checklistProgress: checklistProgress,
   };
 });
